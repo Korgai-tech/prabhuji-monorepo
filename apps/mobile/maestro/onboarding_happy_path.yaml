@@ -1,0 +1,84 @@
+# TAM-55 — onboarding happy-path Maestro flow.
+#
+# Exercises the full Wave 1–3 funnel:
+#   splash → phone-input → OTP → name+language → paywall → home
+#
+# The `appId` matches the debug-variant Android application id in
+# `apps/mobile/android/app/build.gradle.kts` — base id `com.prabhuji.ai` with
+# the `.debug` suffix Gradle appends in the debug build type. Maestro runs
+# against locally-installed debug builds, so it targets the suffixed id.
+#
+# Selectors deliberately favor visible text so the flow keeps working as we
+# refine widget Keys / Semantics.identifier during the fidelity pass. The
+# comments below name the widget Key each `tapOn` maps to for grepability.
+#
+# NOTE: NOT executed as part of TAM-55 — Maestro requires an emulator or the
+# hosted Maestro Cloud, both out of scope for this analytics-hardening ticket.
+# The flow is authored, tagged, and discoverable via `pnpm nx run mobile:maestro`
+# (see `apps/mobile/project.json`); actual execution is deferred to
+# QAS / manual runs.
+
+appId: com.prabhuji.ai.debug
+tags:
+  - onboarding
+  - happy-path
+---
+- launchApp:
+    clearState: true
+
+# --- Splash → Phone Input ----------------------------------------------------
+# The orchestrator auto-redirects an unauthenticated cold-start straight to
+# `/phone-input`; the "Login to Prabhuji" title on the login card is the
+# stable landmark.
+- assertVisible: "Login to Prabhuji"
+
+# --- Phone Input → OTP -------------------------------------------------------
+# Widget: Key('phone-input-field'), hint "Enter mobile number".
+- tapOn: "Enter mobile number"
+- inputText: "9876543210"
+# Widget: Key('phone-input-cta') — text "Get OTP".
+- tapOn: "Get OTP"
+
+# --- OTP → Name+Language -----------------------------------------------------
+# The OTP screen renders "OTP sent to +91••••••3210" as the sub-header — a
+# stable landmark distinct from the phone-input title copy.
+# The 4 digit boxes are keyed `otp-digit-box-0…3`; enter the stub `1234`.
+- assertVisible:
+    text: "OTP sent to"
+    optional: true
+- tapOn:
+    id: "otp-digit-box-0"
+- inputText: "1"
+- tapOn:
+    id: "otp-digit-box-1"
+- inputText: "2"
+- tapOn:
+    id: "otp-digit-box-2"
+- inputText: "3"
+- tapOn:
+    id: "otp-digit-box-3"
+- inputText: "4"
+# Widget: Key('otp-submit') — text "Submit".
+- tapOn: "Submit"
+
+# --- Name+Language → Paywall -------------------------------------------------
+# Widget: Key('name-language-title') — text "Tell us about you".
+- assertVisible: "Tell us about you"
+# Widget: Key('name-language-name-field'), hint "Your name".
+- tapOn: "Your name"
+- inputText: "Ram"
+# Hindi is the pre-selected default — no explicit tap needed.
+# Widget: Key('name-language-continue-cta') — text "Continue".
+- tapOn: "Continue"
+
+# --- Paywall → Home ----------------------------------------------------------
+# Widget: Key('paywall-title') — text "Prabhuji VIP Membership" (from remote
+# config; the fake/CMS-served config uses this exact copy).
+- assertVisible: "Prabhuji VIP Membership"
+# Widget: Key('paywall-close-cta') — the close-icon overlay on the video hero.
+- tapOn:
+    id: "paywall-close-cta"
+
+# Home landmark. Wave 3's minimal Home screen (`home_screen.dart`) greets
+# the user with a "Welcome to Prabhuji" title — that's the assertVisible.
+- assertVisible: "Welcome to Prabhuji"

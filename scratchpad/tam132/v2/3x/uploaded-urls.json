@@ -1,0 +1,44 @@
+{
+  "aarti_bhajans": {
+    "file": "shortcut-aarti-3x.png",
+    "size": 73162,
+    "contentType": "image/png",
+    "key": "home/home-shortcut/f3ef10e6-7f97-4a59-9179-67614c20ea62.png",
+    "publicUrl": "http://192.168.0.41:4566/app-local-media/home/home-shortcut/f3ef10e6-7f97-4a59-9179-67614c20ea62.png"
+  },
+  "mantras_stutis": {
+    "file": "shortcut-mantras-3x.png",
+    "size": 62966,
+    "contentType": "image/png",
+    "key": "home/home-shortcut/523f4c6d-5145-4d97-9272-c4748fbb1219.png",
+    "publicUrl": "http://192.168.0.41:4566/app-local-media/home/home-shortcut/523f4c6d-5145-4d97-9272-c4748fbb1219.png"
+  },
+  "set_wallpaper": {
+    "file": "shortcut-wallpaper-3x.png",
+    "size": 75173,
+    "contentType": "image/png",
+    "key": "home/home-shortcut/17a8a683-ab7d-4598-ab91-81c55273b754.png",
+    "publicUrl": "http://192.168.0.41:4566/app-local-media/home/home-shortcut/17a8a683-ab7d-4598-ab91-81c55273b754.png"
+  },
+  "set_status": {
+    "file": "shortcut-status-3x.png",
+    "size": 68866,
+    "contentType": "image/png",
+    "key": "home/home-shortcut/583d441f-73b2-4a24-8657-1cf3de72d7f5.png",
+    "publicUrl": "http://192.168.0.41:4566/app-local-media/home/home-shortcut/583d441f-73b2-4a24-8657-1cf3de72d7f5.png"
+  },
+  "horoscope": {
+    "file": "shortcut-horoscope-3x.png",
+    "size": 104751,
+    "contentType": "image/png",
+    "key": "home/home-shortcut/594536e2-5c95-4a5d-b89f-77088581272e.png",
+    "publicUrl": "http://192.168.0.41:4566/app-local-media/home/home-shortcut/594536e2-5c95-4a5d-b89f-77088581272e.png"
+  },
+  "set_ringtone": {
+    "file": "shortcut-ringtone-3x.png",
+    "size": 98414,
+    "contentType": "image/png",
+    "key": "home/home-shortcut/c5e54da9-b80f-4221-b71f-3751a3400e05.png",
+    "publicUrl": "http://192.168.0.41:4566/app-local-media/home/home-shortcut/c5e54da9-b80f-4221-b71f-3751a3400e05.png"
+  }
+}

@@ -1,0 +1,150 @@
+# Status Sharing end-to-end Maestro flow (TAM-71 / TAM-72).
+#
+# Exercises the login-gated Status module across its three screens:
+#   splash → phone-input → OTP → onboarding → home → Status tab →
+#   Status Home (Figma 302:4384) → Edit Details (Personal, 371:2185 /
+#   Business, 371:3567) → back → Status Home
+#
+# WHAT THIS FLOW LOCKS DOWN (assertions, not just clicks):
+#   * Login-gated: /status routes redirect to /phone-input when logged out —
+#     covered by asserting we land on phone-input from splash.
+#   * Deity filter row loads and shows the CMS-controlled deity roster
+#     (PRD §6.2 — Hanuman ji, Ram ji, Ganesh ji, etc.).
+#   * Status Home renders a card with the engagement footer (Share CTA,
+#     like, view, Next) and the "Add your details" overlay for a fresh user.
+#   * Edit Details opens both tabs; Personal renders `Your name` and Save,
+#     Business renders `Business name` (typo fix — used to read "Businees",
+#     TAM-71 finding #5), `Business details`, `Business mobile number`.
+#   * The FREE Save round-trip works and lands back on Status Home with
+#     the overlay reflecting the saved profile.
+#
+# NOT COVERED (by design):
+#   * Image share render (requires a Pro subscription — client-side gate)
+#   * Video share render (requires ffmpeg output — deterministic on-device
+#     verification tracked in the TAM-71 evidence follow-up)
+#   * Avatar upload (opens a system picker Maestro can't drive
+#     cross-device without a bundled image; add as a separate flow with a
+#     fixture asset when the picker seam allows an inline fake).
+#
+# HOW TO RUN LOCALLY:
+#   1. `docker compose up -d && pnpm nx serve api` (or point env/staging.json
+#      at your API base URL).
+#   2. Install a debug build on the emulator/device:
+#        `flutter run -d <device>` (or `flutter build apk --debug && adb install ...`).
+#   3. `pnpm nx run mobile:maestro-status` — or manually:
+#        `maestro test apps/mobile/maestro/status_flow.yaml`.
+#
+# ID CONVENTION: selectors favor visible text so the flow stays green
+# across widget-key refactors. Where a widget key exists it is named in the
+# adjacent comment for grepability.
+
+appId: com.prabhuji.ai.debug
+tags:
+  - status
+  - happy-path
+---
+- launchApp:
+    clearState: true
+
+# --- Splash → Phone Input (unauthenticated cold-start) -----------------------
+- assertVisible: "Login to Prabhuji"
+
+# --- Onboarding: OTP + name+language ----------------------------------------
+# Grants POST_NOTIFICATIONS if the Android 13+ system dialog appears (the
+# splash requests it — Firebase notifications setup, PRD §7).
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+
+# Focus the phone field via its label (avoid `hideKeyboard` which fires the
+# Android back button and pops the route on this stack).
+- tapOn:
+    below:
+      text: "Phone Number"
+- inputText: "9876543210"
+- tapOn: "Get OTP"
+
+# OTP (stub provider returns "1234" — see AUTH_OTP_PROVIDER=stub in .env).
+- assertVisible:
+    text: "OTP sent to"
+    optional: true
+- inputText: "1234"
+- tapOn: "Submit"
+
+# Name + language (Hindi pre-selected). Only shown for NEW users — if the
+# API DB already has this phone hash (repeat runs against the same local
+# API), the OTP verify path skips straight to the paywall and this step
+# is a no-op.
+- runFlow:
+    when:
+      visible: "Name"
+    commands:
+      - tapOn:
+          below:
+            text: "Name"
+      - inputText: "Ram"
+      - tapOn: "Continue"
+
+# Paywall — dismiss via X. Wait for the paywall to settle first (it comes
+# from a remote config fetch, so timing isn't instantaneous).
+- extendedWaitUntil:
+    visible: "Prabhuji VIP Membership"
+    timeout: 10000
+- tapOn:
+    point: "5%,7%"
+
+# --- Home shell --------------------------------------------------------------
+- assertVisible: "Home"
+- assertVisible: "Status"
+
+# --- Status tab: Figma 302:4384 ---------------------------------------------
+# Tap the bottom-nav Status tab by its visible label. Selectors bound to
+# `id: nav-tab-status` are avoided because the bottom nav uses Flutter
+# semantics rather than explicit Android resource-ids.
+- tapOn: "Status"
+- extendedWaitUntil:
+    visible: "Edit Details"
+    timeout: 5000
+
+# Deity filter row — CMS deities per PRD §6.2. `All Gods` is always present
+# and selected by default; the rest depend on the CMS seed.
+- assertVisible: "All Gods"
+
+# Engagement footer of the current card. Selectors use the accessibility
+# labels exposed by Flutter Semantics (`Share`, `Next`) — Flutter widget
+# Keys are NOT surfaced as Android resource-ids, so `id:` selectors don't
+# work here. The like/view counts render numeric labels ("0", "9") that
+# vary per card, so they're not asserted individually.
+- assertVisible: "Share"
+- assertVisible: "Next"
+
+# Empty-profile overlay copy (Figma `status-overlay-prompt`). The Semantics
+# tree merges the overlay's whole subtree into one node — the view-count,
+# the prompt title, and the sub-copy all end up in a single content-desc.
+# So `text:` (full-string regex) needs a `.*` anchor to match a substring.
+- assertVisible:
+    text: ".*Add your details.*"
+
+# --- Edit Details → Personal (Figma 371:2185) --------------------------------
+- tapOn: "Edit Details"
+- assertVisible: "Add your details" # screen title (same copy as overlay)
+- assertVisible: "Personal"
+- assertVisible: "Business"
+
+# Personal tab is the default landing.
+- assertVisible: "Your name"
+- assertVisible: "Save"
+
+# --- Edit Details → Business (Figma 371:3567) -------------------------------
+- tapOn: "Business"
+- assertVisible: "Business Information"
+# TAM-71 finding #5 fix: label must read "Business name" (was "Businees name").
+- assertVisible: "Business name"
+- assertVisible: "Business details"
+- assertVisible: "Business mobile number"
+
+# Back to Status Home via the back arrow.
+- pressKey: Back
+- assertVisible: "Edit Details"

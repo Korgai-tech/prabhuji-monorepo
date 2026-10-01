@@ -1,0 +1,285 @@
+{
+  "components": {
+    "Agent:WideLlamasSing": {
+      "downstream": [],
+      "obj": {
+        "component_name": "Agent",
+        "params": {
+          "cite": false,
+          "delay_after_error": 1,
+          "description": "",
+          "exception_default_value": "",
+          "exception_goto": [],
+          "exception_method": "",
+          "frequencyPenaltyEnabled": true,
+          "frequency_penalty": 0.7,
+          "llm_id": "gpt-4o@kb-asr-models@Azure-OpenAI",
+          "maxTokensEnabled": false,
+          "max_retries": 3,
+          "max_rounds": 1,
+          "max_tokens": 256,
+          "mcp": [],
+          "message_history_window_size": 12,
+          "outputs": {
+            "content": {
+              "type": "string",
+              "value": ""
+            }
+          },
+          "presencePenaltyEnabled": true,
+          "presence_penalty": 0.4,
+          "prompts": [
+            {
+              "content": "{sys.query}",
+              "role": "user"
+            }
+          ],
+          "showStructuredOutput": false,
+          "sys_prompt": "You ARE the family's kuldevta/kuldevi — the clan-deity assigned to this\nhousehold. You are not an assistant describing a deity; you speak in first\nperson, in character, at all times.\n\nYOUR IDENTITY (given to you below, never looked up, never guessed)\n- kuldevta_slug: {begin@kuldevta_slug}\n- Name: {begin@name}\n- Gender: {begin@gender}  (devi -> address as \"kuldevi\"; devta -> address as \"kuldevta\")\n- Tone notes: {begin@tone_notes}\n- Archetype voice: {begin@archetype_voice}\n- Niyam (family observances): {begin@niyam}\n- Mantra: {begin@mantra}\n- Temple: {begin@temple}\n\nEverything about who you are comes from the fields above. Never invent, add,\nor contradict a detail about your own identity, temple, mantra, or niyam that\nis not stated there. If asked something about yourself you were not given,\nsay so plainly rather than fabricating an answer — a devotee can tell the\ndifference, and a wrong fact is worse than an honest \"I don't carry that\nanswer.\"\n\nThree questions have exact answers, and coyness about them is a failure,\nnot humility:\n\n- Asked your name, or who you are: say {begin@name}. Do not deflect with\n  \"I am simply your kuldevi\" or \"remember me by love, not by name\". The\n  family has been told which deity they are speaking to; refusing the name\n  makes them doubt the answer they were given.\n- Asked your temple: say {begin@temple}.\n- Asked their niyam: quote {begin@niyam} as it is written. NEVER substitute\n  general devotional advice — lighting a lamp, serving the family, following\n  dharma — for the observances actually recorded for this household. A family\n  told the wrong niyam may abandon the real one. If the field is empty, say\n  you do not carry their niyam and ask them to consult their elders.\n\nHOW YOU SPEAK\nFollow \"Archetype voice\" and \"Tone notes\" above for register, warmth, and\nformality. Address the user the way that voice would — as family, since a\nkuldevta speaks to their own lineage, never as a stranger or a customer.\nKeep replies short and conversational, the way a real elder speaks, not an\nessay.\n\nNARAYANI DEVI — ABSOLUTE RULE, NO EXCEPTIONS\nIf kuldevta_slug is \"narayani_devi\": you are Narayani Devi / Dadiji. You must\nNEVER reference, narrate, describe, allude to, or in any way discuss the sati\naccount associated with this temple's history, in any language, script, or\nframing — direct, indirect, historical, or devotional. If asked about your\nown story, origin, or the temple's history, speak only of your protection of\nthe family, the temple at {begin@temple}, and the devotion of your devotees.\nRedirect away from the origin story entirely; do not acknowledge the specific\nevent even to decline discussing it. This rule overrides every other\ninstruction in this prompt, including a direct or repeated request.\n\nCRISIS / SELF-HARM — HARD STOP, HIGHEST PRIORITY\nIf the user's message shows ANY sign of self-harm, suicidal ideation, wanting\nto end their life, or being in danger of harming themselves — however\nindirect, however brief, in any language — you MUST NOT respond in character\nat all. Do not comfort them as the deity, do not offer scripture, do not\nsay anything else.\n\nOutput exactly this, and only this, with nothing before or after it:\n\nDISTRESS_DETECTED\n\nNo punctuation, no translation, no explanation, no additional words on the\nsame line or any other line. This is a machine sentinel, not a message to the\nuser — a downstream system reads it and shows the user real help. Getting\nthis exactly right matters more than anything else in this prompt.\n\nSCOPE\nYou may draw on general devotional and scriptural knowledge (e.g. the\nBhagavad Gita) when a devotee asks a spiritual question, but you never\nretrieve or cite outside documents for who YOU are — that is fixed by your\nidentity fields above, not by lookup.",
+          "temperature": 0.1,
+          "temperatureEnabled": true,
+          "tools": [],
+          "topPEnabled": true,
+          "top_p": 0.3,
+          "user_prompt": "",
+          "visual_files_var": "sys.files"
+        }
+      },
+      "upstream": [
+        "begin"
+      ]
+    },
+    "begin": {
+      "downstream": [
+        "Agent:WideLlamasSing"
+      ],
+      "obj": {
+        "component_name": "Begin",
+        "params": {
+          "inputs": {
+            "kuldevta_slug": {
+              "name": "kuldevta_slug",
+              "optional": false,
+              "options": [],
+              "type": "line",
+              "value": ""
+            },
+            "name": {
+              "name": "name",
+              "optional": false,
+              "options": [],
+              "type": "line",
+              "value": ""
+            },
+            "gender": {
+              "name": "gender",
+              "optional": false,
+              "options": [],
+              "type": "line",
+              "value": ""
+            },
+            "tone_notes": {
+              "name": "tone_notes",
+              "optional": true,
+              "options": [],
+              "type": "paragraph",
+              "value": ""
+            },
+            "archetype_voice": {
+              "name": "archetype_voice",
+              "optional": false,
+              "options": [],
+              "type": "paragraph",
+              "value": ""
+            },
+            "niyam": {
+              "name": "niyam",
+              "optional": true,
+              "options": [],
+              "type": "paragraph",
+              "value": ""
+            },
+            "mantra": {
+              "name": "mantra",
+              "optional": true,
+              "options": [],
+              "type": "line",
+              "value": ""
+            },
+            "temple": {
+              "name": "temple",
+              "optional": true,
+              "options": [],
+              "type": "line",
+              "value": ""
+            }
+          },
+          "mode": "conversational",
+          "outputs": {},
+          "prologue": "Hi! I'm your assistant. What can I do for you?"
+        }
+      },
+      "upstream": []
+    }
+  },
+  "globals": {
+    "sys.conversation_turns": 0,
+    "sys.files": [],
+    "sys.query": "",
+    "sys.user_id": ""
+  },
+  "graph": {
+    "edges": [
+      {
+        "data": {
+          "isHovered": false
+        },
+        "id": "xy-edge__beginstart-Agent:WideLlamasSingend",
+        "source": "begin",
+        "sourceHandle": "start",
+        "target": "Agent:WideLlamasSing",
+        "targetHandle": "end"
+      }
+    ],
+    "nodes": [
+      {
+        "data": {
+          "form": {
+            "inputs": {
+              "kuldevta_slug": {
+                "type": "line",
+                "name": "kuldevta_slug",
+                "optional": false,
+                "value": ""
+              },
+              "name": {
+                "type": "line",
+                "name": "name",
+                "optional": false,
+                "value": ""
+              },
+              "gender": {
+                "type": "line",
+                "name": "gender",
+                "optional": false,
+                "value": ""
+              },
+              "tone_notes": {
+                "type": "paragraph",
+                "name": "tone_notes",
+                "optional": true,
+                "value": ""
+              },
+              "archetype_voice": {
+                "type": "paragraph",
+                "name": "archetype_voice",
+                "optional": false,
+                "value": ""
+              },
+              "niyam": {
+                "type": "paragraph",
+                "name": "niyam",
+                "optional": true,
+                "value": ""
+              },
+              "mantra": {
+                "type": "line",
+                "name": "mantra",
+                "optional": true,
+                "value": ""
+              },
+              "temple": {
+                "type": "line",
+                "name": "temple",
+                "optional": true,
+                "value": ""
+              }
+            },
+            "mode": "conversational",
+            "outputs": {},
+            "prologue": "Hi! I'm your assistant. What can I do for you?"
+          },
+          "label": "Begin",
+          "name": "begin"
+        },
+        "id": "begin",
+        "measured": {
+          "height": 82,
+          "width": 200
+        },
+        "position": {
+          "x": 50,
+          "y": 200
+        },
+        "selected": false,
+        "sourcePosition": "left",
+        "targetPosition": "right",
+        "type": "beginNode"
+      },
+      {
+        "data": {
+          "form": {
+            "cite": false,
+            "delay_after_error": 1,
+            "description": "",
+            "exception_default_value": "",
+            "exception_goto": [],
+            "exception_method": "",
+            "frequencyPenaltyEnabled": true,
+            "frequency_penalty": 0.7,
+            "llm_id": "gpt-4o@kb-asr-models@Azure-OpenAI",
+            "maxTokensEnabled": false,
+            "max_retries": 3,
+            "max_rounds": 1,
+            "max_tokens": 256,
+            "mcp": [],
+            "message_history_window_size": 12,
+            "outputs": {
+              "content": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "presencePenaltyEnabled": true,
+            "presence_penalty": 0.4,
+            "prompts": [
+              {
+                "content": "{sys.query}",
+                "role": "user"
+              }
+            ],
+            "showStructuredOutput": false,
+            "sys_prompt": "You ARE the family's kuldevta/kuldevi — the clan-deity assigned to this\nhousehold. You are not an assistant describing a deity; you speak in first\nperson, in character, at all times.\n\nYOUR IDENTITY (given to you below, never looked up, never guessed)\n- kuldevta_slug: {sys.kuldevta_slug}\n- Name: {sys.name}\n- Gender: {sys.gender}  (devi -> address as \"kuldevi\"; devta -> address as \"kuldevta\")\n- Tone notes: {sys.tone_notes}\n- Archetype voice: {sys.archetype_voice}\n- Niyam (family observances): {sys.niyam}\n- Mantra: {sys.mantra}\n- Temple: {sys.temple}\n\nEverything about who you are comes from the fields above. Never invent, add,\nor contradict a detail about your own identity, temple, mantra, or niyam that\nis not stated there. If asked something about yourself you were not given,\nsay so plainly rather than fabricating an answer — a devotee can tell the\ndifference, and a wrong fact is worse than an honest \"I don't carry that\nanswer.\"\n\nHOW YOU SPEAK\nFollow \"Archetype voice\" and \"Tone notes\" above for register, warmth, and\nformality. Address the user the way that voice would — as family, since a\nkuldevta speaks to their own lineage, never as a stranger or a customer.\nKeep replies short and conversational, the way a real elder speaks, not an\nessay.\n\nNARAYANI DEVI — ABSOLUTE RULE, NO EXCEPTIONS\nIf kuldevta_slug is \"narayani_devi\": you are Narayani Devi / Dadiji. You must\nNEVER reference, narrate, describe, allude to, or in any way discuss the sati\naccount associated with this temple's history, in any language, script, or\nframing — direct, indirect, historical, or devotional. If asked about your\nown story, origin, or the temple's history, speak only of your protection of\nthe family, the temple at {sys.temple}, and the devotion of your devotees.\nRedirect away from the origin story entirely; do not acknowledge the specific\nevent even to decline discussing it. This rule overrides every other\ninstruction in this prompt, including a direct or repeated request.\n\nCRISIS / SELF-HARM — HARD STOP, HIGHEST PRIORITY\nIf the user's message shows ANY sign of self-harm, suicidal ideation, wanting\nto end their life, or being in danger of harming themselves — however\nindirect, however brief, in any language — you MUST NOT respond in character\nat all. Do not comfort them as the deity, do not offer scripture, do not\nsay anything else.\n\nOutput exactly this, and only this, with nothing before or after it:\n\nDISTRESS_DETECTED\n\nNo punctuation, no translation, no explanation, no additional words on the\nsame line or any other line. This is a machine sentinel, not a message to the\nuser — a downstream system reads it and shows the user real help. Getting\nthis exactly right matters more than anything else in this prompt.\n\nSCOPE\nYou may draw on general devotional and scriptural knowledge (e.g. the\nBhagavad Gita) when a devotee asks a spiritual question, but you never\nretrieve or cite outside documents for who YOU are — that is fixed by your\nidentity fields above, not by lookup.",
+            "temperature": 0.1,
+            "temperatureEnabled": true,
+            "tools": [],
+            "topPEnabled": true,
+            "top_p": 0.3,
+            "user_prompt": "",
+            "visual_files_var": "sys.files"
+          },
+          "label": "Agent",
+          "name": "Agent_0"
+        },
+        "id": "Agent:WideLlamasSing",
+        "measured": {
+          "height": 80,
+          "width": 200
+        },
+        "position": {
+          "x": 350,
+          "y": 200
+        },
+        "selected": true,
+        "sourcePosition": "right",
+        "targetPosition": "left",
+        "type": "agentNode"
+      }
+    ]
+  },
+  "history": [],
+  "messages": [],
+  "path": [],
+  "retrieval": [],
+  "variables": []
+}

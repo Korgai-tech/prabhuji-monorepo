@@ -1,0 +1,24 @@
+{
+  "name": "api-client",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/api-client/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project api-client --web",
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/api-client",
+        "command": "vitest run"
+      }
+    },
+    "generate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "openapi-typescript apps/api/openapi.json -o packages/api-client/src/types.ts"
+      },
+      "dependsOn": ["api:openapi"]
+    }
+  }
+}

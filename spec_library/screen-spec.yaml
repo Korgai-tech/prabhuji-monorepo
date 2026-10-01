@@ -1,0 +1,354 @@
+design_execution_package:
+  app: "Prabhuji"
+  module: "Home"
+  screen_or_flow: "Home Screen / Infinite Scroll Feed"
+  version: "1.0"
+  status: "approved_draft"
+  package_type: "module_wise_design_execution_package"
+  approval_required_before_export: true
+
+source:
+  main_figma_url: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=285-3464&t=8GTJCrqUNd9uTCCg-1"
+  main_figma_file_key: "ipSvV1FnmzvV8TK2Ig8Aiq"
+  main_figma_node_id: "285:3464"
+  main_figma_frame_name: "Home+Infinite scroll feed"
+  feed_header_reference_url: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=285-3641&t=8GTJCrqUNd9uTCCg-1"
+  feed_header_reference_node_id: "285:3641"
+
+product_intent:
+  purpose: "Help users discover Prabhuji modules and devotional content from one primary entry surface."
+  primary_user_goal: "Find and open devotional content or modules quickly."
+  primary_business_goal: "Improve module discovery, feed engagement, sharing, and Pro conversion through content intent."
+  design_principle: "Discovery is free; premium actions are gated after intent."
+
+access_model:
+  free_user:
+    home_ui: "Same as Pro user, without Pro badge."
+    can_view:
+      - "Header"
+      - "Hero banners"
+      - "Feature shortcut cards"
+      - "Infinite feed"
+      - "Bottom navigation"
+      - "Module library/listing pages after tapping shortcut cards"
+      - "Business status customization inside Status module"
+    paywall_triggers:
+      - "CMS banner configured as Pro-only feature discovery"
+      - "Attempt to open premium content inside modules"
+      - "Attempt to share/set status"
+      - "Attempt to apply premium wallpaper/ringtone/status/content"
+    should_not_show:
+      - "Lock badges on Home feed"
+      - "Pro labels on Home feed cards"
+      - "Different Home banners only because user is free"
+      - "Different feed ranking only because user is free"
+
+  pro_user:
+    home_ui: "Same as free user, with small crown/VIP badge near profile avatar."
+    badge:
+      type: "small_crown_or_vip_badge"
+      location: "near_profile_avatar"
+    no_mvp_differences:
+      - "No different banners"
+      - "No different feed ranking"
+      - "No different lock/pro labels"
+
+screen_structure:
+  sections:
+    - id: "home_header"
+      name: "Home Header"
+      visible_elements:
+        - "Prabhuji logo"
+        - "Prabhuji wordmark"
+        - "Help/question icon"
+        - "Profile avatar"
+        - "Pro crown/VIP badge for Pro users only"
+      removed_for_phase_1:
+        - "Search bar"
+        - "Mic search icon"
+      interactions:
+        - element: "Profile avatar"
+          action: "tap"
+          result: "Open Account/Settings"
+          confidence: "confirmed"
+        - element: "Help/question icon"
+          action: "tap"
+          result: "Open Help & Support if available; may move to profile later"
+          confidence: "partially_confirmed"
+
+    - id: "hero_banner_carousel"
+      name: "Hero Banner Carousel"
+      source: "CMS"
+      behavior:
+        - "Supports multiple banners"
+        - "Carousel dots shown when multiple banners exist"
+        - "Banner destination controlled by CMS"
+      supported_destination_types:
+        - "linked_feature_or_module"
+        - "content_detail_or_preview"
+        - "unified_pro_paywall"
+        - "non_clickable_information"
+      access_behavior:
+        pro_user: "Open linked feature/module/content based on CMS config."
+        free_user: "If banner is Pro-only feature discovery, open unified paywall; otherwise open configured destination."
+      failure_rules:
+        all_banners_fail: "Hide banner section."
+        one_banner_fails: "Show remaining valid banners."
+
+    - id: "feature_shortcuts"
+      name: "Feature Shortcut Cards"
+      source: "static_mvp"
+      always_visible: true
+      cards:
+        - id: "aarti_bhajans"
+          label: "Aarti & Bhajans"
+          tap_result: "Open Aarti & Bhajans module/library page"
+        - id: "mantras_stutis"
+          label: "Mantras & Stutis"
+          tap_result: "Open Mantras & Stutis module/library page"
+        - id: "set_ringtone"
+          label: "Set Ringtone"
+          tap_result: "Open Ringtone module/library page"
+        - id: "set_wallpaper"
+          label: "Set Wallpaper"
+          tap_result: "Open Wallpaper module/library page"
+      access_rule: "Free users can open modules and see library pages; paywall triggers only inside modules on premium content/action."
+
+    - id: "infinite_feed"
+      name: "Mixed Infinite Feed"
+      source: "CMS"
+      content_types:
+        - "wallpaper"
+        - "status"
+        - "aarti_bhajan_audio"
+        - "mantra_stuti_audio"
+        - "ringtone_audio"
+      ordering:
+        mvp_supported_modes:
+          - "cms_curated_order"
+          - "trending_first_with_random_content_type_mix"
+        personalization_mvp: false
+        personalization_phase_2:
+          - "preferred_deity"
+          - "language"
+          - "recent_module_usage"
+          - "pro_or_free_status"
+      labels:
+        mvp_source: "CMS"
+        labels:
+          - "TRENDING"
+          - "SUGGESTED"
+        phase_2: "Can switch to auto-generated from engagement once data is available."
+      failure_rules:
+        feed_fails: "Show retry CTA."
+        cms_returns_no_feed: "Hide feed section."
+
+    - id: "bottom_navigation"
+      name: "Bottom Navigation"
+      active_item: "home"
+      items:
+        - "Home"
+        - "Status"
+        - "Mandir"
+        - "Horoscope"
+        - "Books"
+      behavior: "Use standard light nav mode with Home active."
+
+feed_card_behavior:
+  shared_card_structure:
+    visible_elements:
+      - "Header metadata row"
+      - "Content type/module label"
+      - "Content title/subtitle"
+      - "CMS label such as Trending or Suggested"
+      - "Hero preview"
+      - "Primary CTA"
+      - "Engagement footer"
+    header_tappable: true
+    header_tap_result: "Open respective module directly"
+
+  card_types:
+    wallpaper:
+      primary_cta: "Set Wallpaper"
+      cta_result: "Open wallpaper preview screen"
+      header_result: "Open Wallpaper module"
+    status:
+      primary_cta: "Set Status"
+      cta_result: "Open status preview/customization flow"
+      header_result: "Open Status module"
+      pro_rule: "Free users can customize, but sharing/setting status is Pro-only."
+    aarti_bhajan_audio:
+      primary_cta: "Listen to more"
+      cta_result: "Open Aarti & Bhajans module"
+      header_result: "Open Aarti & Bhajans module"
+    mantra_stuti_audio:
+      primary_cta: "Listen to more"
+      cta_result: "Open Mantras & Stutis module"
+      header_result: "Open Mantras & Stutis module"
+    ringtone_audio:
+      primary_cta: "Set Ringtone"
+      cta_result: "Open ringtone preview screen"
+      header_result: "Open Ringtone module"
+
+feed_audio_rules:
+  applies_to:
+    - "aarti_bhajan_audio"
+    - "mantra_stuti_audio"
+    - "ringtone_audio"
+  autoplay: true
+  trigger: "Card comes into viewport"
+  one_audio_at_a_time: true
+  on_card_leaves_viewport: "Stop or pause audio automatically"
+  on_new_audio_card_play: "Stop or pause previously playing audio"
+  mode: "preview_audio"
+
+engagement_rules:
+  like:
+    behavior: "Toggle like/unlike"
+    persistence: "Save if user is logged in"
+  view:
+    trigger: "Card visible for at least 2 seconds"
+    avoid: "Do not count immediate scroll-past as view"
+  share:
+    behavior: "Open native share sheet"
+    important_destination: "WhatsApp"
+    payload_source: "CMS share metadata by content type"
+
+business_status_template:
+  description: "Business status template can be added as overlay over static or video status."
+  customization_location: "Status module"
+  free_user:
+    can_discover: true
+    can_customize: true
+    can_share_or_set: false
+    paywall_trigger: "Attempt to share/set status"
+  pro_user:
+    can_discover: true
+    can_customize: true
+    can_share_or_set: true
+
+data_requirements:
+  cms:
+    banner_fields:
+      - "banner_id"
+      - "image_or_video_url"
+      - "title"
+      - "destination_type"
+      - "destination_value"
+      - "is_pro_feature_discovery"
+      - "sort_order"
+      - "is_active"
+    feed_item_fields:
+      - "feed_item_id"
+      - "content_type"
+      - "module"
+      - "title"
+      - "subtitle"
+      - "thumbnail_or_media_url"
+      - "audio_preview_url"
+      - "cta_label"
+      - "cta_destination_type"
+      - "cta_destination_value"
+      - "header_destination_module"
+      - "label"
+      - "like_count"
+      - "view_count"
+      - "share_metadata"
+      - "sort_order"
+      - "trending_score_optional"
+    feature_cards: "Static in MVP"
+
+states:
+  default:
+    description: "Header, banners, feature cards, feed, and bottom navigation load normally."
+  loading:
+    description: "Load static feature cards immediately. Load banners/feed from CMS."
+  banner_partial_failure:
+    description: "Show valid banners and ignore failed banners."
+  banner_full_failure:
+    description: "Hide banner section."
+  feed_failure:
+    description: "Show retry CTA below feature cards."
+  feed_empty:
+    description: "Hide feed section."
+  audio_playing:
+    description: "One visible audio card is playing preview audio."
+  audio_paused_on_scroll:
+    description: "Audio stops or pauses when card leaves viewport."
+  pro_badge_visible:
+    description: "Pro user sees small crown/VIP badge near profile avatar."
+
+analytics_events:
+  - event_name: "home_screen_viewed"
+    trigger: "Home screen rendered"
+    required: true
+  - event_name: "home_banner_viewed"
+    trigger: "Banner visible"
+    required: true
+  - event_name: "home_banner_tapped"
+    trigger: "User taps banner"
+    required: true
+  - event_name: "home_profile_tapped"
+    trigger: "User taps profile avatar"
+    required: true
+  - event_name: "home_help_tapped"
+    trigger: "User taps help/question icon"
+    required: false
+  - event_name: "home_feature_card_tapped"
+    trigger: "User taps feature shortcut card"
+    required: true
+  - event_name: "home_feed_item_impression"
+    trigger: "Feed item enters viewport"
+    required: true
+  - event_name: "home_feed_item_viewed"
+    trigger: "Feed item visible for at least 2 seconds"
+    required: true
+  - event_name: "home_feed_item_header_tapped"
+    trigger: "User taps feed card header"
+    required: true
+  - event_name: "home_feed_cta_tapped"
+    trigger: "User taps feed card CTA"
+    required: true
+  - event_name: "home_feed_audio_autoplay_started"
+    trigger: "Audio card enters viewport and starts preview"
+    required: true
+  - event_name: "home_feed_audio_paused_on_scroll"
+    trigger: "Audio card leaves viewport"
+    required: true
+  - event_name: "home_feed_like_tapped"
+    trigger: "User taps like"
+    required: true
+  - event_name: "home_feed_share_tapped"
+    trigger: "User taps share"
+    required: true
+  - event_name: "home_feed_retry_tapped"
+    trigger: "User taps retry after feed failure"
+    required: false
+  - event_name: "home_paywall_triggered"
+    trigger: "Home-origin action opens unified paywall"
+    required: true
+
+qa_checks:
+  - "Search bar and mic are removed from Phase 1 Home."
+  - "Free and Pro Home UI are same except Pro badge near profile avatar."
+  - "No lock badges on Home feed."
+  - "No Pro labels on Home feed cards."
+  - "Feature shortcut cards are always visible."
+  - "Free users can open modules from shortcut cards."
+  - "Paywall does not trigger simply from Home load."
+  - "CMS banners support configured destination types."
+  - "If all banners fail, banner section is hidden."
+  - "If feed fails, retry CTA is shown."
+  - "If CMS returns no feed, feed section is hidden."
+  - "Audio autoplay starts only when card enters viewport."
+  - "Only one audio card plays at a time."
+  - "Audio stops or pauses when card leaves viewport."
+  - "View event counts only after 2 seconds visible."
+  - "Feed CTA opens preview/detail/module screen, not direct apply."
+  - "Feed card header opens respective module."
+  - "Business status sharing is Pro-only, but customization is allowed for free users."
+
+handoff_readiness:
+  ready_for_dev_discussion: true
+  ready_for_final_build: true
+  remaining_questions_file: "open-questions.yaml"

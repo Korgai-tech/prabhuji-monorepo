@@ -1,0 +1,181 @@
+{
+  "components": {
+    "Agent:WideLlamasSing": {
+      "downstream": [],
+      "obj": {
+        "component_name": "Agent",
+        "params": {
+          "cite": false,
+          "delay_after_error": 1,
+          "description": "",
+          "exception_default_value": "",
+          "exception_goto": [],
+          "exception_method": "",
+          "frequencyPenaltyEnabled": true,
+          "frequency_penalty": 0.7,
+          "llm_id": "gpt-4o@kb-asr-models@Azure-OpenAI",
+          "maxTokensEnabled": false,
+          "max_retries": 3,
+          "max_rounds": 1,
+          "max_tokens": 256,
+          "mcp": [],
+          "message_history_window_size": 0,
+          "outputs": {
+            "content": {
+              "type": "string",
+              "value": ""
+            }
+          },
+          "presencePenaltyEnabled": true,
+          "presence_penalty": 0.4,
+          "prompts": [
+            {
+              "content": "{sys.query}",
+              "role": "user"
+            }
+          ],
+          "showStructuredOutput": false,
+          "sys_prompt": "You read a family's answers to six questions about their lineage and turn them\ninto a structured profile.\n\nYou do NOT identify the deity. You never name a deity. Selection happens\ndownstream, in code, from a closed registry you cannot see. Naming one here\nwould be guessed, not looked up.\n\nINPUT\nFree-text answers in Hindi, English, Hinglish or any Indian language, in any\nscript. Users misspell, abbreviate, and often answer a different question than\nthe one asked.\n\nTHE SIX QUESTIONS\n1. Apka surname kya he?                                          -> surname\n2. Apka parivar kaha se he? (ancestral, NOT where they live now)  -> ancestral_place\n3. Aap kis samaj se he?                                           -> community\n4. Apka gotra kya he?                                             -> gotra\n5. Apke dada dadi konse mandir jaate the?                         -> soft_signals.temple_mentioned\n6. Apke ghar ke mandir mein kis devta devi ki photo lagi he?      -> soft_signals.mandir_photo\n\nOUTPUT\nA single JSON object matching the schema below. No prose, no commentary, no\nmarkdown code fence. The response must begin with { and end with }.\n\nRULES\n- \"Pata nahi\", \"don't know\", \"?\", \"-\", an empty string, or an answer that does\n  not address the question all map to null. NEVER guess to fill a field.\n- Normalise spelling toward the most common romanisation, but keep exactly what\n  the user typed in the matching `*_raw` field.\n  Agrawal / Aggarwal / अग्रवाल -> \"Agarwal\".\n- Q2 asks where the family is ORIGINALLY from. If the answer looks like a\n  current metro (Mumbai, Delhi, Bengaluru, Pune, Surat...), still return it but\n  set `ancestral_place_may_be_current: true`.\n- Do not invent a district or state that was not given. Only split\n  village / district / state where the user's own words support it.\n- A community you infer from the surname goes in `community_inferred`, NEVER in\n  `community`. `community` is only what the user stated in Q3.\n- Q4 gotra: if null or unrecognised, substitute \"Kashyap\" and set\n  `gotra_defaulted: true`.\n- Q5 and Q6 go into `soft_signals` VERBATIM. Do not resolve them, correct their\n  spelling, or interpret what they point to. If the user names a temple or a\n  deity, copy the words they used, unchanged. Downstream matching depends on\n  this being untouched.\n- `language` is the language and script the user answered in.\n- `answers_provided` counts how many of the six were answered with something\n  other than null.\n\nSCHEMA\n{\n  \"surname\": string|null,\n  \"surname_raw\": string|null,\n  \"community\": string|null,\n  \"community_raw\": string|null,\n  \"community_inferred\": string|null,\n  \"gotra\": string|null,\n  \"gotra_raw\": string|null,\n  \"gotra_defaulted\": boolean,\n  \"ancestral_place\": {\n    \"village\": string|null,\n    \"district\": string|null,\n    \"state\": string|null,\n    \"raw\": string|null\n  },\n  \"ancestral_place_may_be_current\": boolean,\n  \"language\": string|null,\n  \"soft_signals\": {\n    \"temple_mentioned\": string|null,\n    \"mandir_photo\": string|null,\n    \"other\": string[]\n  },\n  \"answers_provided\": integer\n}",
+          "temperature": 0.1,
+          "temperatureEnabled": true,
+          "tools": [],
+          "topPEnabled": true,
+          "top_p": 0.3,
+          "user_prompt": "",
+          "visual_files_var": "sys.files"
+        }
+      },
+      "upstream": [
+        "begin"
+      ]
+    },
+    "begin": {
+      "downstream": [
+        "Agent:WideLlamasSing"
+      ],
+      "obj": {
+        "component_name": "Begin",
+        "params": {
+          "inputs": {},
+          "mode": "conversational",
+          "outputs": {},
+          "prologue": "Hi! I'm your assistant. What can I do for you?"
+        }
+      },
+      "upstream": []
+    }
+  },
+  "globals": {
+    "sys.conversation_turns": 0,
+    "sys.date": "",
+    "sys.files": [],
+    "sys.history": [],
+    "sys.query": "",
+    "sys.user_id": ""
+  },
+  "graph": {
+    "edges": [
+      {
+        "data": {
+          "isHovered": false
+        },
+        "id": "xy-edge__beginstart-Agent:WideLlamasSingend",
+        "source": "begin",
+        "sourceHandle": "start",
+        "target": "Agent:WideLlamasSing",
+        "targetHandle": "end"
+      }
+    ],
+    "nodes": [
+      {
+        "data": {
+          "form": {
+            "inputs": {},
+            "mode": "conversational",
+            "outputs": {},
+            "prologue": "Hi! I'm your assistant. What can I do for you?"
+          },
+          "label": "Begin",
+          "name": "begin"
+        },
+        "id": "begin",
+        "measured": {
+          "height": 82,
+          "width": 200
+        },
+        "position": {
+          "x": 50,
+          "y": 200
+        },
+        "selected": false,
+        "sourcePosition": "left",
+        "targetPosition": "right",
+        "type": "beginNode"
+      },
+      {
+        "data": {
+          "form": {
+            "cite": false,
+            "delay_after_error": 1,
+            "description": "",
+            "exception_default_value": "",
+            "exception_goto": [],
+            "exception_method": "",
+            "frequencyPenaltyEnabled": true,
+            "frequency_penalty": 0.7,
+            "llm_id": "gpt-4o@kb-asr-models@Azure-OpenAI",
+            "maxTokensEnabled": false,
+            "max_retries": 3,
+            "max_rounds": 1,
+            "max_tokens": 256,
+            "mcp": [],
+            "message_history_window_size": 0,
+            "outputs": {
+              "content": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "presencePenaltyEnabled": true,
+            "presence_penalty": 0.4,
+            "prompts": [
+              {
+                "content": "{sys.query}",
+                "role": "user"
+              }
+            ],
+            "showStructuredOutput": false,
+            "sys_prompt": "You read a family's answers to six questions about their lineage and turn them\ninto a structured profile.\n\nYou do NOT identify the deity. You never name a deity. Selection happens\ndownstream, in code, from a closed registry you cannot see. Naming one here\nwould be guessed, not looked up.\n\nINPUT\nFree-text answers in Hindi, English, Hinglish or any Indian language, in any\nscript. Users misspell, abbreviate, and often answer a different question than\nthe one asked.\n\nTHE SIX QUESTIONS\n1. Apka surname kya he?                                          -> surname\n2. Apka parivar kaha se he? (ancestral, NOT where they live now)  -> ancestral_place\n3. Aap kis samaj se he?                                           -> community\n4. Apka gotra kya he?                                             -> gotra\n5. Apke dada dadi konse mandir jaate the?                         -> soft_signals.temple_mentioned\n6. Apke ghar ke mandir mein kis devta devi ki photo lagi he?      -> soft_signals.mandir_photo\n\nOUTPUT\nA single JSON object matching the schema below. No prose, no commentary, no\nmarkdown code fence. The response must begin with { and end with }.\n\nRULES\n- \"Pata nahi\", \"don't know\", \"?\", \"-\", an empty string, or an answer that does\n  not address the question all map to null. NEVER guess to fill a field.\n- Normalise spelling toward the most common romanisation, but keep exactly what\n  the user typed in the matching `*_raw` field.\n  Agrawal / Aggarwal / अग्रवाल -> \"Agarwal\".\n- Q2 asks where the family is ORIGINALLY from. If the answer looks like a\n  current metro (Mumbai, Delhi, Bengaluru, Pune, Surat...), still return it but\n  set `ancestral_place_may_be_current: true`.\n- Do not invent a district or state that was not given. Only split\n  village / district / state where the user's own words support it.\n- A community you infer from the surname goes in `community_inferred`, NEVER in\n  `community`. `community` is only what the user stated in Q3.\n- Q4 gotra: if null or unrecognised, substitute \"Kashyap\" and set\n  `gotra_defaulted: true`.\n- Q5 and Q6 go into `soft_signals` VERBATIM. Do not resolve them, correct their\n  spelling, or interpret what they point to. If the user names a temple or a\n  deity, copy the words they used, unchanged. Downstream matching depends on\n  this being untouched.\n- `language` is the language and script the user answered in.\n- `answers_provided` counts how many of the six were answered with something\n  other than null.\n\nSCHEMA\n{\n  \"surname\": string|null,\n  \"surname_raw\": string|null,\n  \"community\": string|null,\n  \"community_raw\": string|null,\n  \"community_inferred\": string|null,\n  \"gotra\": string|null,\n  \"gotra_raw\": string|null,\n  \"gotra_defaulted\": boolean,\n  \"ancestral_place\": {\n    \"village\": string|null,\n    \"district\": string|null,\n    \"state\": string|null,\n    \"raw\": string|null\n  },\n  \"ancestral_place_may_be_current\": boolean,\n  \"language\": string|null,\n  \"soft_signals\": {\n    \"temple_mentioned\": string|null,\n    \"mandir_photo\": string|null,\n    \"other\": string[]\n  },\n  \"answers_provided\": integer\n}",
+            "temperature": 0.1,
+            "temperatureEnabled": true,
+            "tools": [],
+            "topPEnabled": true,
+            "top_p": 0.3,
+            "user_prompt": "",
+            "visual_files_var": "sys.files"
+          },
+          "label": "Agent",
+          "name": "Agent_0"
+        },
+        "id": "Agent:WideLlamasSing",
+        "measured": {
+          "height": 80,
+          "width": 200
+        },
+        "position": {
+          "x": 350,
+          "y": 200
+        },
+        "selected": true,
+        "sourcePosition": "right",
+        "targetPosition": "left",
+        "type": "agentNode"
+      }
+    ]
+  },
+  "history": [],
+  "messages": [],
+  "path": [],
+  "retrieval": [],
+  "variables": []
+}

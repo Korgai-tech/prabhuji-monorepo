@@ -1,0 +1,3360 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// ID convention (STRICT — enforced by review, the `migration-patterns` skill,
+// and the data-engineer agent):
+//
+//   Every surrogate primary key `id` and every foreign-key column that
+//   references one MUST be a native Postgres `uuid` — declare it
+//   `String @db.Uuid` (with a `@default(uuid(…))` on the PK). Never leave a
+//   real id as bare `String` (TEXT).
+//
+//   Business / external identifiers that happen to end in `Id` are NOT uuids
+//   and MUST stay plain `String` (TEXT): e.g. `paywallId` ("vip-membership-v1"),
+//   `planId` ("week"), `productId`, `providerSubscriptionId`. These carry
+//   human/vendor slugs, not generated uuids.
+//
+//   WHICH VERSION — and it is not a free choice:
+//
+//     `@default(uuid(7))` — identity + payment tables ONLY (the 11 listed in
+//     `docs/UUID-V7-MIGRATION.md`). Time-ordered, so append-heavy ledgers get
+//     index locality instead of scattering B-tree writes.
+//
+//     `@default(uuid())`  — v4, EVERYWHERE ELSE. Not legacy, not "not migrated
+//     yet". Six content modules use `ORDER BY id ASC` as their entire product
+//     shuffle — the per-item sort_order columns were dropped on purpose and v4
+//     randomness IS the replacement (see aarti/wallpaper/mantras/ringtone/
+//     home/status repositories). v7 there turns every discovery grid into
+//     oldest-first. Do not "finish the migration".
+//
+//   Both are the same 128-bit value in the same `uuid` column, so a table
+//   holding both versions is expected, not broken. Ids are NEVER rewritten.
+// -----------------------------------------------------------------------------
+
+// TAM-82: authorization role. EXACTLY TWO VALUES — decided (epic P2 / ADR §B1);
+// editor/reviewer/viewer tiers are explicitly out of scope. Adding a tier later
+// is an enum value here + a predicate in `adminMiddleware`; that migration cost
+// is accepted deliberately (epic deferral D-D3). Do NOT "future-proof" this.
+//
+// `role` is NEVER an input: no request schema accepts it (`/auth/register` hard-
+// codes `user`). The only writers are this column's default and the boot-time
+// bootstrap-admin path (`core/auth/bootstrap-admin.ts`).
+enum UserRole {
+  user
+  admin
+
+  @@map("user_role")
+}
+
+/// How an account authenticates. EXCLUSIVE — an account is one or the other,
+/// never both, and `user_login_type_shape` enforces that in the database rather
+/// than by convention.
+///
+///   otp   — the mobile app. Phone + OTP, no email, no password.
+///   email — the admin CMS. Email + bcrypt password, no phone.
+///
+/// Orthogonal to `role`: an `email` account may be `user` or `admin`. What it
+/// cannot be is an `otp` account with a password, which is the state the CHECK
+/// exists to make unrepresentable.
+enum LoginType {
+  otp
+  email
+
+  @@map("login_type")
+}
+
+model User {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  /// Credentials for the `email` login type ONLY, and null on every `otp`
+  /// account. They were NOT NULL until phone numbers became first-class, which
+  /// forced every phone signup to invent an `otp-<id>@prabhuji.internal`
+  /// address and 32 random bytes of hex — junk that reached the JWT, the
+  /// analytics warehouse, and the app's avatar initial. `email` stays `@unique`;
+  /// Postgres treats NULLs as distinct, so any number of OTP accounts coexist.
+  email        String? @unique
+  name         String?
+  passwordHash String?
+
+  // Prabhuji onboarding fields (TAM-42). All nullable — populated across the onboarding funnel:
+  //   phone_* set at OTP verify (TAM-43); selected_language + name set at profile save (TAM-44);
+  //   onboarding_completed_at set once the profile save succeeds.
+  phoneCountryCode String? @map("phone_country_code")
+
+  /// The payer's real number, in plaintext. It superseded a peppered SHA-256
+  /// hash: one-way storage made it impossible to notify anyone that a debit
+  /// failed or that NPCI had revoked their mandate, and it meant `OtpProvider`
+  /// only ever received a digest, so no real SMS provider could send anything.
+  /// PII — never logged (`country_code` + `phone_number_length` only) and never
+  /// used as a Redis key (see `phone.bucket.ts`).
+  phoneNumber String? @map("phone_number")
+
+  /// When the number proved it was reachable — the FIRST successful OTP verify,
+  /// stamped once and never moved.
+  ///
+  /// TAM-154: the row is written at OTP SEND, so its existence no longer means
+  /// the phone was verified. NULL is a lead — someone who asked for a code and
+  /// never came back — kept precisely so they can be called. This column is also
+  /// what `isNewUser` is derived from: "this verify was the one that flipped it".
+  phoneVerifiedAt DateTime? @map("phone_verified_at")
+
+  selectedLanguage      String?   @map("selected_language")
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at")
+
+  /// When `bk_first_utm_source_success` was emitted for this user — a once-only
+  /// marker, never the campaign itself.
+  ///
+  /// The campaign is NOT stored here or anywhere in this database: it is read
+  /// live from the shared platform's referral service
+  /// (`/referral/v1/<id>/latest`) at each of the four UTM moments. But that route
+  /// returns exactly ONE row and carries no id for the user's OLDEST touch, so
+  /// "is this their first campaign?" is unanswerable from the response. This
+  /// column is the answer, and it is the whole reason it exists.
+  ///
+  /// NULL = never reported. Stamped once, never moved, never cleared — moving it
+  /// would re-fire a "first touch" event years into a user's life.
+  firstUtmReportedAt DateTime? @map("first_utm_reported_at")
+
+  /// TAM-258: the ad group of the user's FIRST captured touch — the referral
+  /// service's `adgroup_name` column, stored verbatim.
+  ///
+  /// Written in the same once-only guarded write as `firstUtmReportedAt` above,
+  /// so the two can never disagree: the campaign that stamped the marker is the
+  /// campaign named here. Never overwritten — a user who clicks a second ad keeps
+  /// their first group, which is the entire point of the column.
+  ///
+  /// This is what makes first-touch answerable at all. `/referral/v1/<id>/latest`
+  /// returns exactly one row (the NEWEST touch) and carries no id for the oldest,
+  /// which is why `PaywallUtmOverride` matches on the latest and says so. The
+  /// landing resolver reads THIS column instead, so an ad-driven landing can
+  /// never be rewritten by a later click.
+  ///
+  /// Raw, not the derived module code (`STS`/`RTG`): the code mapping lives in
+  /// `core/users/services/landing.constants.ts` and is deliberately re-derived on
+  /// every read, so renaming a code is a one-line change with no backfill.
+  ///
+  /// NULL = no campaign captured, which reads as organic. Not PII.
+  firstUtmGroup String? @map("first_utm_group")
+
+  /// TAM-258: when the one-time ad-arrival landing was SERVED to this user.
+  ///
+  /// The install is the ad arrival, so the redirect into the ad's module fires
+  /// once and never again — this column is that "once". Stamped only when a
+  /// non-Home module was actually served; a lookup that resolved to Home
+  /// (no group, or a group carrying no known code) produced nothing and must not
+  /// spend the marker.
+  ///
+  /// NULL = never served. Meaningless for users outside the referral arm.
+  adLandingConsumedAt DateTime? @map("ad_landing_consumed_at")
+
+  /// Razorpay's handle for this person as a PAYER — `cust_xxx`.
+  ///
+  /// On the User rather than on `mandates` because that is what it describes: a
+  /// customer belongs to the human and outlives any individual mandate. Razorpay
+  /// refuses to create a second one for the same contact ("Customer already
+  /// exists for the merchant"), and offers no way to look one up by phone, so
+  /// without this column a user who had ever begun a registration could never
+  /// begin another — every retry died before the order was created.
+  ///
+  /// Written once, on the first registration that creates it, and read on every
+  /// one after to SKIP the create call. Never a secret and never PII on its own:
+  /// it is an opaque gateway id, not a payment instrument.
+  ///
+  /// Owned by `core/users` like every other column here; `core/payment` reaches
+  /// it only through `IUsersApi`.
+  razorpayCustomerId String? @map("razorpay_customer_id")
+
+  // TAM-82: defaults to `user`, so every pre-existing row and every future
+  // OTP-created row is a non-admin. Resolved from the DB on every /admin/*
+  // request (never a JWT claim) so revocation takes effect on the next request.
+  role UserRole @default(user)
+
+  /// Defaults to `email` so rows written by OLD tasks during a rollout — which
+  /// always supply email + passwordHash — satisfy the CHECK. Both live creation
+  /// paths set it explicitly.
+  loginType LoginType @default(email) @map("login_type")
+
+  /// TAM-187: an account an admin created from the CMS for QA. Its OTP login
+  /// takes the environment's fixed `TEST_OTP` and no SMS is sent — the same
+  /// treatment `TEST_NUMBERS` gives, but DB-backed so adding one needs no
+  /// redeploy. Only `core/test-users` sets it, and only on a number with no
+  /// prior account, so a real user can never be flipped into a fixed-OTP one.
+  isTestUser Boolean @default(false) @map("is_test_user")
+
+  /// TAM-187: the abtesting bucket this test user was last pinned to from the
+  /// CMS — recorded only after the abtesting service ACCEPTED the assignment.
+  /// A record of what we set, for the admin list; the service stays the source
+  /// of truth for evaluation. Null = never pinned. Always null for real users.
+  testBucket Int? @map("test_bucket")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  firebaseTokens FirebaseToken[]
+  chatSessions   ChatSession[]
+
+  @@unique([phoneCountryCode, phoneNumber], name: "user_phone_unique")
+  @@index([onboardingCompletedAt])
+  @@index([role])
+}
+
+// Firebase Cloud Messaging device token registry.
+//
+// Mobile registers its FCM token on app open (once authenticated) and on
+// `onTokenRefresh`; the server dedupes by `(userId, deviceId)` — a stable
+// per-install UUID that the client persists in secure storage. Global
+// `@@unique` on `token` protects against the same token being registered under
+// two users (happens if a device is handed off): the last writer wins and the
+// prior row is upserted onto the new owner.
+//
+// `onDelete: Cascade` on the user relation means account deletion cleans up
+// tokens without a follow-up sweep.
+enum FirebasePlatform {
+  ios
+  android
+
+  @@map("firebase_platform")
+}
+
+model FirebaseToken {
+  id        String           @id @default(uuid(7)) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  token     String           @unique
+  deviceId  String           @map("device_id")
+  platform  FirebasePlatform
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId], name: "firebase_token_user_device_unique")
+  @@index([userId])
+  @@map("firebase_tokens")
+}
+
+// -----------------------------------------------------------------------------
+// Chatbot: RAGFlow-backed assistant.
+//
+// A `ChatSession` is one conversation, owned by exactly one user and pinned to
+// exactly one RAGFlow agent — `agentId` is the provider's agent identifier (a
+// bare hex string, NOT a uuid), so a session can never drift between agents
+// mid-conversation and the transcript stays interpretable.
+//
+// Conversation identity is OURS: `chat_sessions.id` is what the app passes
+// around and what maps messages to a conversation. `providerSessionId` is a
+// SECONDARY handle — RAGFlow's own session id, which it mints on the first
+// answer (it rejects any id it did not mint: `code: 102, "Session not found!"`),
+// hence nullable. We send it on later turns so the agent has its server-side
+// context.
+//
+// We ALSO replay the recent transcript inline on every turn. That is deliberate
+// redundancy, and measured: turn two costs ~25,435 prompt tokens with the
+// session id alone and ~25,487 with the replay too — ~52 tokens, because
+// RAGFlow is replaying the same history server-side anyway. What the 52 tokens
+// buy is recovery: if the provider session expires or is lost, the answer stays
+// coherent from OUR transcript instead of the conversation silently resetting.
+//
+// `onDelete: Cascade` on both relations means deleting a user takes the whole
+// transcript with it — no follow-up sweep (contrast the payment tables, which
+// are deliberately FK-free because a ledger must outlive its user).
+// -----------------------------------------------------------------------------
+enum ChatRole {
+  user
+  bot
+
+  @@map("chat_role")
+}
+
+model ChatSession {
+  id                String  @id @default(uuid(7)) @db.Uuid
+  userId            String  @map("user_id") @db.Uuid
+  agentId           String  @map("agent_id")
+  providerSessionId String? @map("provider_session_id")
+
+  /// Which deity this session's PROVIDER conversation was opened as, for the
+  /// kuldevta persona agent only; NULL on every other agent.
+  ///
+  /// RAGFlow binds Begin variables once, at conversation creation, and never
+  /// re-reads them. So a user who re-answers kuldevta-khoj and lands on a
+  /// different deity keeps talking to the OLD one for as long as
+  /// `providerSessionId` is reused — the assignment row says nagnechi while
+  /// the persona still answers "Khandoba". Recording the deity here lets the
+  /// send path notice the drift and open a fresh provider conversation with
+  /// the new Begin inputs.
+  personaSlug String? @map("persona_slug")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  /// The session list is always "this user's, newest first".
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  role      ChatRole
+  content   String
+
+  /// RAGFlow's `message_id` for this answer. NULL on a `user` row — the user's
+  /// turn is ours, the provider never assigned it an id.
+  providerMessageId String? @map("provider_message_id")
+
+  /// The provider's ENTIRE response body, stored as JSONB exactly as it came
+  /// back. `content` is the answer we serve; this is the audit record around it
+  /// — token usage, retrieval `reference`, `elapsed_time`, `task_id`, `event`.
+  /// NULL on a `user` row.
+  ///
+  /// Kept whole rather than shredded into columns on purpose: RAGFlow's payload
+  /// is THEIR contract and will change shape without telling us. A column per
+  /// field would turn each of those changes into a migration; a JSONB blob
+  /// turns it into a query.
+  rawResponse Json? @map("raw_response")
+
+  /// No `updatedAt`: a message is immutable once written. An edit would be a
+  /// new row, not a rewrite of history.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  /// Matches the only read: one session's messages, newest first, keyset-paged.
+  @@index([sessionId, createdAt(sort: Desc)])
+  @@map("chat_messages")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-46: Paywall CMS / remote-config tables.
+//
+// These tables hold the *source* of paywall configuration that the mobile app
+// pulls at boot (TAM-45 endpoint reads through these via the PaywallConfigProvider).
+// The write-side of these tables is owned by CMS/ops (Phase 2 admin UI); the API
+// only reads. All localized copy lives in per-`(entity_id, locale)` translation
+// tables — never JSONB — so per-locale updates don't rewrite the parent row.
+// -----------------------------------------------------------------------------
+
+model PaywallConfig {
+  id                     String   @id @default(uuid()) @db.Uuid
+  paywallId              String   @unique @map("paywall_id")
+  configVersion          Int      @default(1) @map("config_version")
+  enabled                Boolean  @default(true)
+  defaultPlanId          String?  @map("default_plan_id")
+  shimmerEnabled         Boolean  @default(true) @map("shimmer_enabled")
+  hasVideoLocaleFallback Boolean  @default(true) @map("has_video_locale_fallback")
+
+  /// TAM-159. Which BUILT layout renders this config — the app switches on this
+  /// string and falls back to `card_hero` for anything it does not recognise.
+  ///
+  /// This is deliberately a DB column and not part of the bucket map in
+  /// `services/paywall.buckets.ts`. The split is: code owns *who sees what*
+  /// (traffic), the CMS owns *what it looks like*. Putting layout in code too
+  /// would mean a config row could not describe its own screen, and would turn
+  /// "try P-3's layout with P-2's assets" — a legitimate no-deploy experiment —
+  /// into a release.
+  ///
+  /// NOT an enum: a Postgres enum would need a migration per new layout, and the
+  /// value is only ever meaningful to a client that already has the widget, so
+  /// the app's fallback is the real validation boundary.
+  layout String @default("card_hero")
+
+  /// TAM-159. The lowest app version that may be served this paywall, as a
+  /// `major.minor.patch` string compared NUMERICALLY (never lexically —
+  /// `"1.0.99"` is below `"1.1.0"`).
+  ///
+  /// A layout only exists inside an app binary, so serving one to a build that
+  /// predates it renders a broken screen. This is the guard, and it lives PER
+  /// PAYWALL rather than as one global constant because that is what it
+  /// actually describes: "which builds contain this screen". A single global
+  /// gate cannot express "layouts 1–4 shipped in 1.1.0, layout 5 shipped in
+  /// 1.3.0" without cutting off the four that were fine.
+  ///
+  /// `0.0.0` means no gate. That is correct for the DEFAULT paywall — every
+  /// build has it — and the resolver never version-checks the default anyway,
+  /// since it is the fallback and must always be reachable.
+  minAppVersion String @default("0.0.0") @map("min_app_version")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("paywall_configs")
+}
+
+/// TAM-159. The paywall hero, as an ordered per-locale list.
+///
+/// Supersedes the flat `PaywallTranslation.video_*` columns, which could only
+/// ever express "one video". One model covers all four designs: P-1/P-3 hold a
+/// single `image` row, P-2 a single `video` row, P-4 N `image` rows rendered as
+/// a carousel. The flat columns are still POPULATED ON THE WIRE from the first
+/// row here (see `PaywallService`) because shipped APKs read them directly —
+/// backward compatibility lives in the response projection, not in duplicated
+/// state, so those columns can be dropped once no supported build reads them.
+///
+/// No FK to `paywall_configs` — consistent with every other paywall child table,
+/// which join by the `paywall_id` string only.
+model PaywallHeroMedia {
+  id        String @id @default(uuid()) @db.Uuid
+  paywallId String @map("paywall_id")
+  locale    String
+  sortOrder Int    @default(0) @map("sort_order")
+
+  /// `image` | `video`. Drives which player/widget the client builds; a value
+  /// the client does not know is skipped rather than rendered blank.
+  mediaType String @map("media_type")
+
+  url          String
+  thumbnailUrl String? @map("thumbnail_url")
+
+  /// Analytics identity of the creative (`video_id` / `image_id` on paywall
+  /// events). Same contract and same reason as TAM-130's `videoId`: letting it
+  /// drift from the asset silently corrupts the comparison it exists for.
+  mediaId String @map("media_id")
+
+  @@unique([paywallId, locale, sortOrder], name: "paywall_hero_media_unique")
+  @@index([paywallId, locale, sortOrder])
+  @@map("paywall_hero_media")
+}
+
+model PaywallPlan {
+  id        String  @id @default(uuid()) @db.Uuid
+  paywallId String  @map("paywall_id")
+  planId    String  @map("plan_id")
+  productId String  @map("product_id")
+  period    String
+  sortOrder Int     @default(0) @map("sort_order")
+  enabled   Boolean @default(true)
+  trialDays Int     @default(0) @map("trial_days")
+
+  // The MACHINE-READABLE price. `PaywallPlanTranslation.displayPriceText` is
+  // localized display copy ("₹299 / month", "₹299 / महीना") and must NEVER be
+  // parsed to build a debit amount — that is how you charge someone ₹2.
+  // Integer paise, never a float: 299.00 in binary floating point is not 299.
+  amountPaise Int    @default(0) @map("amount_paise")
+  currency    String @default("INR")
+
+  /// The token amount debited AT MANDATE REGISTRATION while a trial is running,
+  /// to prove the instrument works before any real money is due. Integer paise,
+  /// same rule and same reason as `amountPaise` — this is a real debit against a
+  /// real bank account.
+  ///
+  /// Replaces a hardcoded `TRIAL_AUTHORIZATION_RUPEES = 2` in the Cashfree
+  /// adapter, which meant the amount actually charged lived only in TypeScript:
+  /// changing it would have made every historical deposit unreconstructible,
+  /// because nothing recorded the value in force at the time.
+  ///
+  /// Charging `amountPaise` here instead would debit the full price on day 0 and
+  /// defeat the trial. 0 means no deposit — which no live gateway does today,
+  /// so a plan with `trialDays > 0` and 0 here is refused at purchase time by
+  /// `PaymentController.resolvePlan` rather than silently authorizing nothing.
+  ///
+  /// On Decentro this is the wire `default_amount` under the MAX rule, taken
+  /// with the UPI PIN via `is_first_txn_amount`. It is NOT the recurring price:
+  /// each cycle names `amountPaise` in its own pre-debit notification.
+  initialDepositPaise Int @default(0) @map("initial_deposit_paise")
+
+  translations PaywallPlanTranslation[]
+
+  @@unique([paywallId, planId], name: "paywall_plan_unique")
+  @@index([paywallId, enabled, sortOrder])
+  @@map("paywall_plans")
+}
+
+model PaywallPlanTranslation {
+  id     String @id @default(uuid()) @db.Uuid
+  planId String @map("plan_id") @db.Uuid
+  locale String
+
+  /// TAM-159. Which paywall variant this copy belongs to.
+  ///
+  /// This is how a variant changes its trial wording ("₹2" in a price card vs
+  /// "Start trial by paying just ₹2" in a bullet) WITHOUT duplicating the plan
+  /// itself. `PaywallPlan` — and therefore `amountPaise`, `productId` and
+  /// `initialDepositPaise` — stays a single canonical row set shared by every
+  /// variant, so a price change is one row, not one per variant. Presentation
+  /// varies per variant; money does not.
+  ///
+  /// NOT NULL with a sentinel default rather than "canonical means NULL":
+  /// Postgres treats NULLs as DISTINCT in unique indexes, so `(plan_id, locale,
+  /// NULL)` could be inserted twice and the guarantee the old `(plan_id, locale)`
+  /// constraint gave us would be silently gone. Recovering it would need a
+  /// partial unique index, which Prisma cannot express in-schema.
+  ///
+  /// Lookup falls back to the sentinel when a variant has no override.
+  paywallId String @default("vip-membership-v1") @map("paywall_id")
+
+  localizedLabel         String @map("localized_label")
+  trialLabel             String @map("trial_label")
+  displayPriceText       String @map("display_price_text")
+  subscriptionDetailText String @map("subscription_detail_text")
+
+  plan PaywallPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, locale, paywallId], name: "paywall_plan_translation_unique")
+  @@index([planId, locale])
+  @@map("paywall_plan_translations")
+}
+
+model PaywallBenefit {
+  id        String @id @default(uuid()) @db.Uuid
+  paywallId String @map("paywall_id")
+  benefitId String @map("benefit_id")
+
+  /// An icon KEY the client maps to a BUNDLED asset — never a URL.
+  ///
+  /// Deliberately not CMS-uploadable. Benefit artwork is part of the app's
+  /// design system, not content: it has to match the layout's tile size and the
+  /// palette, and a wrong upload is visible on every paywall at once. Adding a
+  /// benefit icon is an app release, same as any other bundled asset.
+  icon String
+
+  sortOrder Int     @default(0) @map("sort_order")
+  enabled   Boolean @default(true)
+
+  translations PaywallBenefitTranslation[]
+
+  @@unique([paywallId, benefitId], name: "paywall_benefit_unique")
+  @@index([paywallId, enabled, sortOrder])
+  @@map("paywall_benefits")
+}
+
+model PaywallBenefitTranslation {
+  id            String @id @default(uuid()) @db.Uuid
+  benefitId     String @map("benefit_id") @db.Uuid
+  locale        String
+  localizedName String @map("localized_name")
+
+  benefit PaywallBenefit @relation(fields: [benefitId], references: [id], onDelete: Cascade)
+
+  @@unique([benefitId, locale], name: "paywall_benefit_translation_unique")
+  @@index([benefitId, locale])
+  @@map("paywall_benefit_translations")
+}
+
+model PaywallTranslation {
+  id                String  @id @default(uuid()) @db.Uuid
+  paywallId         String  @map("paywall_id")
+  locale            String
+  title             String
+  videoUrl          String? @map("video_url")
+  videoThumbnailUrl String? @map("video_thumbnail_url")
+  videoId           String? @map("video_id")
+  cancelAnytimeText String  @map("cancel_anytime_text")
+  refundPolicyText  String  @map("refund_policy_text")
+  payNowCta         String  @map("pay_now_cta")
+
+  @@unique([paywallId, locale], name: "paywall_translation_unique")
+  @@index([paywallId, locale])
+  @@map("paywall_translations")
+}
+
+model PaywallLegalLinks {
+  id               String @id @default(uuid()) @db.Uuid
+  paywallId        String @map("paywall_id")
+  locale           String
+  privacyPolicyUrl String @map("privacy_policy_url")
+  termsServiceUrl  String @map("terms_service_url")
+  refundPolicyUrl  String @map("refund_policy_url")
+
+  @@unique([paywallId, locale], name: "paywall_legal_links_unique")
+  @@index([paywallId, locale])
+  @@map("paywall_legal_links")
+}
+
+/// Per-ad-group paywall overrides — the CMS-managed replacement for the
+/// hardcoded campaign map that shipped on this branch.
+///
+/// ── WHAT IT DOES ───────────────────────────────────────────────────────────
+/// When a caller's attribution touch names an ad group listed here,
+/// `GET /paywall/config` serves the DEFAULT paywall shell with `overrides`
+/// patched over it at response time. Nothing is written, the stored paywall is
+/// untouched, and every field the blob does not mention keeps its CMS value.
+///
+/// ── WHY THE KEY IS `utm_group` ─────────────────────────────────────────────
+/// It is the `adgroup_name` COLUMN of the referral service's `/latest` row —
+/// the same field `readUtmAttribution` reports as `utm_group`, and therefore
+/// the same string an operator reads as `first_utm_group` in the warehouse.
+///
+/// ⚠️ It is the user's NEWEST touch, not provably their first. `/latest`
+/// returns one row and carries no id for the oldest, and this database stores
+/// only `User.firstUtmReportedAt` (the once-only guard) and never the value.
+/// A returning user whose newest touch is a different ad group therefore
+/// matches on THAT group. Making it truly first-touch means persisting the
+/// group beside `firstUtmReportedAt` at capture time and reading the column
+/// here — a later ticket, and one that would not change this table.
+///
+/// ── WHY A JSON BLOB AND NOT COLUMNS ────────────────────────────────────────
+/// The overridable surface is a sparse, nested, per-locale tree (one hero +
+/// four copy lines per locale) where EVERY field is optional
+/// and "absent" is meaningful — it means "keep the CMS value". Columns would
+/// need a nullable column per field per locale, so adding a locale would be a
+/// migration. The blob is validated by Zod on the admin write path and
+/// defensively narrowed on read, so a hand-edited row degrades to "override
+/// nothing" rather than to a broken paywall.
+///
+/// No FK to `paywall_configs` — consistent with every other paywall table,
+/// and correct here regardless: an override names an AD GROUP, not a paywall.
+model PaywallUtmOverride {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  /// The `adgroup_name` this treatment answers to. Compared EXACTLY — matching
+  /// is a hash lookup, never a prefix or a `LIKE`, because an ad group name is
+  /// an operator-chosen string and a fuzzy match would silently capture a
+  /// campaign nobody meant to include.
+  utmGroup String @unique @map("utm_group")
+
+  /// Off by default is wrong here — a row exists because someone created it in
+  /// the CMS to run. This is the pause switch for a campaign that has ended,
+  /// so the treatment can be kept for next season without serving today.
+  enabled Boolean @default(true)
+
+  /// The patch, shaped like `PaywallOverride` in
+  /// `services/paywall-override.types.ts`. All keys optional.
+  overrides Json
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([enabled])
+  @@map("paywall_utm_overrides")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-47: Subscription state (payment provider deferred).
+//
+// One row per user, created with `status: 'free'` when the OTP module upserts a
+// new User (TAM-43 wiring). The write path from 'free' → 'active' waits for a
+// payment provider ticket — this phase only ever sets 'free' and only ever
+// READS via `GET /subscription/status`. `provider` + `providerSubscriptionId`
+// are nullable now so a future provider ticket can populate them without a
+// schema migration.
+//
+// Server-authoritative: no client input can ever flip `status`. The mobile
+// splash orchestrator (TAM-48) trusts this row over any client cache.
+//
+// `userId` holds a `User.id` (uuid) — the 1:1 link is logical (no DB FK, matching
+// the paywall CMS tables) but the column is still `@db.Uuid` to match `User.id`.
+// -----------------------------------------------------------------------------
+model Subscription {
+  id     String @id @default(uuid(7)) @db.Uuid
+  userId String @unique @map("user_id") @db.Uuid
+  // 'free' | 'pending' | 'trialing' | 'active' | 'past_due' | 'cancelled' | 'expired'
+  //
+  // Deliberately TEXT, not a Prisma enum — adding a status needs no migration.
+  // Nothing at the DB level constrains it, so the service defensively narrows
+  // unknown values to 'free' at read time.
+  status String @default("free")
+
+  activePlanId           String?   @map("active_plan_id")
+  activeProductId        String?   @map("active_product_id")
+  provider               String?
+  // Holds the provider's mandate id (Decentro `decentro_mandate_id`). An
+  // external business identifier, so TEXT — not @db.Uuid (schema header rule).
+  // NEVER exposed on the wire.
+  providerSubscriptionId String?   @map("provider_subscription_id")
+  // End of the current PAID period. `active` past this instant is not entitled.
+  expiresAt              DateTime? @map("expires_at")
+  startedAt              DateTime? @map("started_at")
+
+  // End of the 3-day free trial. Entitlement during `trialing` keys on this.
+  trialEndsAt     DateTime? @map("trial_ends_at")
+  // Stamped the first time a trial is granted, and never cleared. One trial per
+  // user, ever — re-registration after a failed first debit must not hand out a
+  // second free trial.
+  trialConsumedAt DateTime? @map("trial_consumed_at")
+  // Dunning grace: while `past_due`, the user stays entitled until this instant
+  // so a retryable bank failure doesn't instantly revoke access they paid for.
+  graceUntil      DateTime? @map("grace_until")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("subscriptions")
+}
+
+/// User-initiated cancellation requests (TAM-125, revised).
+///
+/// Durable audit trail for "the user asked to cancel" — a record of what
+/// HAPPENED, no longer a queue of what someone still has to do.
+///
+/// It was the latter originally: the row was a REQUEST and nothing else, ops
+/// fulfilled at the provider off-band, and a deferred worker was meant to read
+/// `status='pending'` and drive the revoke. That worker was never built, and
+/// with no admin surface over this table users stayed billable at the gateway
+/// until someone ran direct SQL. `POST /subscription/cancel-requests` now
+/// revokes inline, so a row IS accompanied by a state change:
+/// `mandates.state='revoked'` and `subscriptions.status='cancelled'`, both
+/// written by `core/payment`.
+///
+/// `status` therefore reaches a terminal value before the response is written —
+/// `completed` when the mandate was revoked (or there was nothing to revoke),
+/// `rejected` with the gateway's reason in `notes` when it failed. `rejected`
+/// rather than `pending` on failure is load-bearing: the partial unique index
+/// below only blocks a second PENDING row, so parking a failure there would
+/// 409 the user's own retry forever.
+///
+/// One `pending` row per user at a time — enforced by the service inside a
+/// SELECT-FOR-UPDATE transaction AND by a partial unique index (see the
+/// migration for the raw SQL — Prisma alone cannot express a partial index).
+/// The two layers are deliberate: the service check gives a clean 409 to the
+/// app, the DB constraint is defence-in-depth against races and against a
+/// hypothetical admin path bypassing the service. Now that rows do not sit
+/// `pending`, this guards against a duplicate GATEWAY CALL under a double-tap
+/// rather than against a duplicate queue entry.
+///
+/// No FK to `User` or `Subscription` — logical link via `userId` /
+/// `subscriptionId`, matching `subscriptions` and `mandates`.
+model SubscriptionCancellationRequest {
+  id             String @id @default(uuid(7)) @db.Uuid
+  userId         String @map("user_id") @db.Uuid
+  /// Snapshot of `subscriptions.id` at request time. If the user's subscription
+  /// row is ever rewritten (it shouldn't be — one row per user, TAM-47 — but the
+  /// snapshot makes the audit trail self-contained), the request still points
+  /// to what was cancelled.
+  subscriptionId String @map("subscription_id") @db.Uuid
+
+  /// 'pending' | 'processing' | 'completed' | 'rejected'
+  ///
+  /// In practice a persisted row is `completed` or `rejected`: the default
+  /// below is what the INSERT writes, and the revoke overwrites it moments
+  /// later in the same request. A row observed `pending` means a request that
+  /// died mid-revoke — worth looking at, since the gateway's state for it is
+  /// unknown. `processing` is unused (it belonged to the retired worker) and is
+  /// kept only because the app already renders it.
+  ///
+  /// Bare TEXT like `Subscription.status` — adding a status needs no migration.
+  /// The service defensively narrows unknown values before rendering; the app
+  /// treats an unknown as `pending`.
+  status String @default("pending")
+
+  /// User-supplied reason. Optional — the app does not surface a reason field
+  /// in v1 (per Figma), but the column exists so a future "why are you
+  /// cancelling?" step can write to it without a migration.
+  reason String?
+
+  /// Internal ops note. Never returned by the user-facing endpoints. Now
+  /// written by the API itself on every closed-out row: the gateway's own
+  /// failure message on `rejected`, or a marker that there was no revocable
+  /// mandate. This is what a "they say they cancelled and were charged" ticket
+  /// starts from, which is why the facade goes out of its way to preserve the
+  /// provider's wording instead of a generic "revoke failed".
+  notes String?
+
+  requestedAt DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
+  /// Admin `User.id` — the ops agent who fulfilled (or rejected) this request.
+  ///
+  /// ALWAYS NULL on the in-app path, and deliberately so: nobody fulfilled it,
+  /// the API did it inline. A non-null value means a human acted on the row, so
+  /// it stays for the admin surface that may yet reject one by hand.
+  /// `@db.Uuid` because it references `User.id` (schema header rule).
+  processedBy String?   @map("processed_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  /// Serves the user-facing GET "my latest request".
+  @@index([userId, requestedAt(sort: Desc)])
+  /// Was for the ops sweep "give me the oldest pending", which no longer
+  /// exists. Kept: it now serves the reporting query that actually gets run —
+  /// "cancellations rejected since <date>", i.e. who tried to leave and was
+  /// stopped by a gateway error.
+  @@index([status, requestedAt])
+  @@map("subscription_cancellation_requests")
+}
+
+// -----------------------------------------------------------------------------
+// Recurring payments: mandate registration + the debit ledger.
+//
+// `Subscription` above is the ENTITLEMENT PROJECTION — one row per user, read
+// on every Pro-gated request by five modules. It stays narrow. Everything about
+// how the money actually moves lives here.
+//
+// Deliberately provider-neutral. Decentro is the first (and currently only)
+// implementation, but nothing below names it in a column: `provider` is a
+// string, ids are `provider*`, and `state` is OUR vocabulary that the adapter
+// maps Decentro's onto. Swapping or adding a PSP is an adapter, not a migration.
+//
+// No FK to `User` or `Subscription` — the link is logical via `user_id`,
+// matching `subscriptions` and the paywall CMS tables.
+// -----------------------------------------------------------------------------
+
+/// One row per mandate REGISTRATION ATTEMPT (not per user, not per
+/// subscription). A user accumulates rows over time: NPCI auto-revokes a
+/// mandate whose first debit fails, and re-consent mints a new one, so this is
+/// an append-mostly log.
+model Mandate {
+  id     String @id @default(uuid(7)) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  /// 'upi' (UPI Autopay) | 'enach'. Decentro runs eNACH through the same
+  /// four-verb lifecycle (register → notify → present → manage), so both live
+  /// in this table. Bare TEXT like `Subscription.status` — adding a type needs
+  /// no migration.
+  type     String @default("upi")
+  provider String @default("decentro")
+
+  /// OUR id, sent as the provider's `reference_id`. Persisted BEFORE dispatch,
+  /// so a timeout that loses the response still leaves a key to reconcile
+  /// against. External-facing business identifier ⇒ TEXT, not @db.Uuid.
+  referenceId String @unique @map("reference_id")
+
+  /// Provider-assigned ids. Null until registration comes back.
+  providerMandateId String? @unique @map("provider_mandate_id")
+  providerTxnId     String? @map("provider_txn_id")
+  npciTransactionId String? @map("npci_transaction_id")
+
+  /// OUR state vocabulary — the adapter maps the provider's onto this, so
+  /// Decentro's nine `mandate_status` spellings never reach the business layer.
+  /// 'initiated' | 'pending' | 'active' | 'paused' | 'revoked' | 'rejected'
+  /// | 'expired' | 'failed' | 'completed'
+  state       String  @default("initiated")
+  stateReason String? @map("state_reason")
+
+  planId      String @map("plan_id")
+  productId   String @map("product_id")
+  /// Integer paise. Never a float — see PaywallPlan.amountPaise.
+  amountPaise Int    @map("amount_paise")
+  currency    String @default("INR")
+
+  frequency  String @default("MONTHLY")
+  /// 'MAX' (variable up to amount) | 'FIXED'. MAX + a default amount means a
+  /// future price change needs no re-consent from the user.
+  amountRule String @default("MAX") @map("amount_rule")
+  /// The recurrence rule, and it applies ONLY to a calendar `frequency`. Every
+  /// mandate is registered `AS_PRESENTED`, so the Decentro adapter omits this
+  /// from the wire entirely — a recurrence rule with no recurrence is a 400 on
+  /// the field set.
+  ///
+  /// 'AFTER', sent with NO day number, matching crickmate-monorepo's adapter.
+  /// It was 'BEFORE' with ruleValue 28, which every prod registration carried
+  /// and Decentro accepted; the reason 28 was chosen is worth keeping even
+  /// though the value no longer ships — "ON" grants exactly one eligible day
+  /// per month, which has no meaning in February and silently skips a billing
+  /// cycle, and 28 is the highest day that exists in every month.
+  ruleType   String @default("AFTER") @map("rule_type")
+  /// VESTIGIAL. Not sent to any provider. Retained because the column is NOT
+  /// NULL; drop it in a migration when something else touches this table.
+  ruleValue  Int    @default(28) @map("rule_value")
+
+  /// When the MANDATE becomes valid — always the IST day it was registered.
+  /// NOT the first debit date: that is `nextDebitDate`, and conflating the two
+  /// is what this pair replaced. Decentro refuses `is_first_txn_amount` (the
+  /// registration deposit) on a mandate whose `start_date` is in the future, so
+  /// a trial can no longer be expressed by pushing this out.
+  startDate     DateTime  @map("start_date") @db.Date
+  endDate       DateTime  @map("end_date") @db.Date
+  /// The IST day the next FULL-price debit is due. Set at registration —
+  /// today+trialDays during a trial, a month out without one (the registration
+  /// charge already covers the current period). The scheduler's `(state,
+  /// nextDebitDate)` sweep reads exactly this.
+  nextDebitDate DateTime? @map("next_debit_date") @db.Date
+
+  /// When Pro granted by the trial lapses; null means this mandate carries no
+  /// trial. DECIDED AT REGISTRATION, where the one-trial-per-user rule is
+  /// applied, and read back verbatim at activation. It is stored rather than
+  /// re-derived from dates because that derivation is what expired a one-day
+  /// trial at 05:30 IST: `startDate` is a `@db.Date`, so it reads back as UTC
+  /// midnight, and comparing that against `now` ends the day 5h30m early.
+  trialEndsAt DateTime? @map("trial_ends_at") @db.Timestamptz(6)
+
+  /// Where the user goes to approve: a UPI intent link today, a bank redirect
+  /// URL under eNACH. Not `intentUrl` — that name would be a lie on half the
+  /// rows. NEVER logged; never returned once expired.
+  ///
+  /// NULL on a gateway whose approval runs through a client SDK rather than a
+  /// link — see `providerCheckout`. Exactly one of the two is populated.
+  authUrl       String?   @map("auth_url")
+  authExpiresAt DateTime? @map("auth_expires_at")
+
+  /// The handles a CLIENT SDK needs to open its own approval sheet, as the
+  /// adapter assembled them. Razorpay's UPI Autopay authorization is raised by
+  /// Razorpay Checkout on the device, not by us, so there is no link to store —
+  /// the app opens `order_id` + `customer_id` under the publishable `key_id`.
+  ///
+  /// Persisted rather than rebuilt so a user who abandons checkout and taps Pay
+  /// again reopens THE SAME order instead of orphaning one per retry, and so
+  /// `GET /payment/mandate` can resume a half-finished approval after an app
+  /// restart. Shares `authExpiresAt` as its validity window.
+  ///
+  /// PUBLIC BY CONSTRUCTION: this is returned to the client verbatim, so it may
+  /// only ever hold ids and the publishable key. The API secret never goes near
+  /// it. Shape is `MandateCheckout` (core/payment/types.ts).
+  providerCheckout Json? @map("provider_checkout")
+
+  /// 'ab***@okhdfcbank' for UPI, a masked account number for eNACH. The full
+  /// handle is NEVER stored — it is payment-instrument data we have no use for.
+  payerHandleMasked String? @map("payer_handle_masked")
+  payerNameMasked   String? @map("payer_name_masked")
+
+  /// Last confirm-by-poll against the provider. Throttles re-polling.
+  lastPolledAt DateTime? @map("last_polled_at")
+
+  transactions     Transaction[]
+  pdnNotifications PaymentPdnNotification[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Serves the scheduler's "who is due for a debit" sweep.
+  @@index([state, nextDebitDate])
+  /// Serves the app's "does this user have a live mandate" read.
+  @@index([userId, state])
+  @@map("mandates")
+}
+
+/// THE single source of truth for every movement of money — one row per
+/// attempted movement, of any kind.
+///
+/// Replaced `payment_attempts`, which was keyed `(mandate_id, cycle_date)` and
+/// therefore could only ever hold recurring debits. That shape had no room for
+/// the charge taken at mandate registration, so the ₹2 initial deposit was
+/// recorded NOWHERE: only `mandates.provider_txn_id` survived it — an id, with
+/// no amount, no status, and the amount itself living in a TypeScript constant.
+/// A non-trial signup was worse, taking the full first charge at registration,
+/// so the ledger's first row would have been month two.
+///
+/// The three tables around this one keep their distinct jobs, and the split is
+/// deliberate: `mandates` is the INSTRUMENT (stored consent to debit),
+/// `subscriptions` is the ENTITLEMENT PROJECTION read on every Pro-gated
+/// request, and `payment_callback_events` is the untrusted-trigger log. This
+/// table is none of those — it is the append-mostly record of what we asked a
+/// gateway to move, what it answered, and when. Nothing reads it on a hot path,
+/// so it optimises for being answerable years later without the code that wrote
+/// it, which is why `kind`, `charge_phase` and the plan/product snapshot are
+/// stored rather than derived.
+///
+/// Rows are NEVER deleted and NEVER rewritten to hide a mistake. A movement
+/// that turned out wrong is corrected by a NEW row (`refund`, `chargeback`)
+/// pointing back via `parent_transaction_id`.
+model Transaction {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  /// Whose money this is. Logical link only — no FK to `User`, matching
+  /// `subscriptions` and `mandates`.
+  userId String @map("user_id") @db.Uuid
+
+  /// WHAT KIND OF MOVEMENT. Bare TEXT like every other status column here, so
+  /// adding a kind needs no migration.
+  ///
+  ///   initial_deposit — the charge taken AT MANDATE REGISTRATION to prove the
+  ///                     instrument works. Cashfree debits the trial deposit
+  ///                     here (`/subscriptions/pay`, payment_type AUTH);
+  ///                     Decentro moves ₹0 (`is_downpayment:false`). Recorded
+  ///                     either way, so "did registration take money?" is
+  ///                     answered by the row rather than by folklore.
+  ///   one_time        — a standalone purchase, no mandate involved.
+  ///   recurring_debit — one billing cycle under a mandate.
+  ///   refund          — money returned by us.
+  ///   chargeback      — money pulled back by the bank or network.
+  kind String
+
+  /// The gateway that owns this movement: 'cashfree' | 'decentro' | 'stub'.
+  /// Denormalised from the mandate deliberately — a mandate can outlive a
+  /// gateway migration, and this row must still say who actually moved it.
+  provider String
+
+  /// The instrument. NULL for `one_time` (none exists) and permitted NULL for a
+  /// refund of one. `onDelete: Restrict`, NOT Cascade: a ledger that disappears
+  /// along with its instrument is not a ledger.
+  mandateId String? @map("mandate_id") @db.Uuid
+
+  /// SIGNED integer paise. Positive = money in, negative = money out. Never a
+  /// float — 299.00 is not 299 in binary floating point.
+  ///
+  /// Signed rather than magnitude-plus-direction so net cash is one query with
+  /// no reader re-deriving a sign: `SUM(amount_paise) WHERE status='succeeded'`.
+  /// It can never disagree with `kind`, because `transactions_amount_sign`
+  /// forbids it. `initial_deposit` may be 0 — Decentro's registration moves
+  /// nothing, and a zero row is a fact worth keeping rather than a row worth
+  /// omitting.
+  amountPaise Int    @map("amount_paise")
+  currency    String @default("INR")
+
+  /// Lifecycle. ONE vocabulary across every `kind`, so no query has to branch
+  /// on a gateway's phase names.
+  ///
+  ///   pending   — row written, nothing dispatched yet.
+  ///   notified  — pre-debit notification accepted, sequence id held.
+  ///               Recurring only.
+  ///   submitted — handed to the gateway, awaiting the outcome. Also an
+  ///               initial deposit awaiting the user's UPI approval.
+  ///   succeeded — money moved. REQUIRES `gateway_payment_id` (CHECK).
+  ///   failed    — terminal decline or terminal error. `failure_phase` says
+  ///               WHERE it died, which is what decides whether money can
+  ///               possibly have moved.
+  ///   abandoned — terminal by our choice: retries exhausted, the mandate died
+  ///               underneath us, or the user never approved.
+  ///
+  /// There is deliberately no `refunded` or `disputed` status: a refund is its
+  /// own row pointing at this one, so refunded-ness is DERIVED. Recording it
+  /// here too would mean two places to update and a guaranteed lie the first
+  /// time a partial refund lands.
+  ///
+  /// There is also no `superseded` status — being replaced is bookkeeping, not
+  /// an outcome, and overloading `status` would erase why the row failed. See
+  /// `superseded_at`.
+  status String @default("pending")
+
+  /// Which of OUR calls is the irreversible, money-moving one for the gateway
+  /// that owns this row: 'none' | 'deposit' | 'notification' | 'submission'.
+  ///
+  /// THE column capturing the asymmetry between adapters. Decentro's
+  /// `presentDebit` is a POST that moves money ⇒ 'submission'. Cashfree's
+  /// `notifyPreDebit` POSTs a scheduled charge and its `presentDebit` is a GET
+  /// ⇒ 'notification'. Cashfree's registration AUTH pay ⇒ 'deposit';
+  /// Decentro's ₹0 registration ⇒ 'none'.
+  ///
+  /// Load-bearing for recovery rather than documentation: "may I re-claim this
+  /// cycle after a transport failure?" is exactly "did the failure happen at or
+  /// after `charge_phase`?". Written from `MandateProvider.chargePhase`, so the
+  /// adapter declares it and no service ever branches on a provider name.
+  chargePhase String @map("charge_phase")
+
+  // ---- recurring-debit fields (NULL on every other kind) --------------------
+
+  /// The debit's target date in IST. Half of the anti-double-charge key. A
+  /// DATE, not a timestamp: the constraint must mean "this billing month", and
+  /// a timestamp would let two runs an hour apart both insert. UTC-midnight
+  /// `Date`s, per `istDateOnly` in `npci-window.ts`.
+  cycleDate DateTime? @map("cycle_date") @db.Date
+
+  /// Load-bearing: NPCI auto-revokes a mandate whose FIRST presentation fails,
+  /// so a first-debit failure takes the re-registration path (full re-consent)
+  /// rather than the retry path. With a day-1 trial debit this is elevated
+  /// probability, not an edge case.
+  ///
+  /// Derived from `countRecurringDebitsForMandate`, which MUST filter on
+  /// `kind` — an unfiltered count sees the initial-deposit row and reports
+  /// `false` on the genuine first cycle.
+  isFirstDebit Boolean @default(false) @map("is_first_debit")
+
+  /// Which claim of this cycle this row is. 1 for the original; incremented
+  /// only by the supersede path, never by a retry.
+  attemptNo Int @default(1) @map("attempt_no")
+
+  /// Presentations made under THIS row. Renewals get three before lapsing.
+  retryCount Int @default(0) @map("retry_count")
+
+  /// A SNAPSHOT of the sequence id THIS presentation was made under.
+  ///
+  /// `pdn_notifications.presentation_sequence_id` is AUTHORITATIVE; this is a
+  /// copy taken at presentation time. The distinction is load-bearing: a re-arm
+  /// CLEARS the notification's id (the provider rejects a reused one), while an
+  /// already-presented row must keep the id it actually used or its settlement
+  /// can never be reconciled. Two columns, two different questions — "what do we
+  /// hold now?" versus "what did this attempt use?".
+  presentationSequenceId String? @map("presentation_sequence_id")
+
+  /// The notification this row's presentation was made under. NULL on every
+  /// non-recurring kind, and NULL on a recurring row until the cycle's PDN is
+  /// created. `Restrict` — a ledger that loses its notification trail is not a
+  /// ledger.
+  pdnId String? @map("pdn_id") @db.Uuid
+
+  // ---- the two ids, which answer different questions ------------------------
+
+  /// The gateway's OWN id for this movement (Cashfree `cf_payment_id`,
+  /// Decentro's txn id). THE handle a dispute starts from, and what a figure in
+  /// the gateway's settlement report reconciles against.
+  ///
+  /// Nullable, and deliberately so: rows are written BEFORE dispatch, so that a
+  /// timeout which loses the response still leaves something to reconcile
+  /// against. NOT NULL would force writing the row only AFTER the call, which
+  /// is precisely the window that loses money invisibly. It is instead required
+  /// where it can be — `transactions_settled_has_gateway_id` forbids
+  /// `succeeded` without it, so money that moved is always traceable.
+  gatewayPaymentId String? @unique @map("gateway_payment_id")
+
+  /// The idempotency key WE send the gateway: Cashfree's deterministic
+  /// `payment_id` (`pj_pay_<ref>_<cycle>`), or the mandate `referenceId` on the
+  /// deposit leg. Known BEFORE dispatch, which is what makes it usable to ask
+  /// "did my call land?" after a timeout — the recovery sweep's entire basis.
+  /// UNIQUE, so two rows can never claim one gateway-side payment; for a
+  /// `one_time`, with no cycle to key on, it is the only such guard.
+  gatewayRequestId String? @unique @map("gateway_request_id")
+
+  /// The reference actually SENT on the presentation call, minted fresh per
+  /// attempt and persisted before dispatch.
+  ///
+  /// A SEPARATE column from `gateway_request_id` because the two have opposite
+  /// requirements. `gateway_request_id` is DETERMINISTIC per cycle — that is what
+  /// makes "did my call land?" answerable — and it is reused across
+  /// re-presentations after `markForRetry`. Decentro REJECTS a reused
+  /// `reference_id` (`error_duplicate_reference_id`), so the presentation needs a
+  /// value that changes every attempt. Deriving one from `retry_count` instead
+  /// looks cheaper but is wrong: `markSubmitted` increments the counter BEFORE
+  /// `presentDebit` runs, so two attempts would silently share a reference.
+  gatewayPresentationRef String? @unique @map("gateway_presentation_ref")
+
+  // ---- the rest of the reconciliation trail ---------------------------------
+
+  /// The bank's RRN and NPCI's id — the only record of this money outside the
+  /// gateway's own systems.
+  bankReferenceNumber String? @map("bank_reference_number")
+  npciTransactionId   String? @map("npci_transaction_id")
+
+  // ---- phase timestamps -----------------------------------------------------
+
+  notifiedAt  DateTime? @map("notified_at")
+  submittedAt DateTime? @map("submitted_at")
+  settledAt   DateTime? @map("settled_at")
+
+  // ---- failure --------------------------------------------------------------
+
+  /// WHERE it died: 'notify' | 'submit' | 'settle'. Distinguishes a transport
+  /// failure that CANNOT have moved money from a decline that reached the bank
+  /// — the whole difference between recoverable and water under the bridge.
+  /// NULL unless `status = 'failed'`.
+  failurePhase   String? @map("failure_phase")
+  failureCode    String? @map("failure_code")
+  failureMessage String? @map("failure_message")
+
+  /// WHY it died, in OUR vocabulary rather than the gateway's (TAM-186).
+  ///
+  /// `failure_code` is the provider's string and it is useless for grouping:
+  /// Razorpay answers `GATEWAY_ERROR` for 91.9% of declines, behind which sit
+  /// at least fifteen distinct reasons — 91% of them "insufficient balance".
+  /// Every dashboard built on `failure_code` therefore reports one opaque
+  /// bucket, and a real user-side decline is indistinguishable from an
+  /// infrastructure fault.
+  ///
+  /// Bare TEXT like `kind` and `status`, for the same reason: adding a value
+  /// needs no migration. The canonical vocabulary lives in
+  /// `core/payment/failure-sub-code.ts`, which is also the only place allowed
+  /// to decide one.
+  ///
+  /// Written at CAPTURE time from the provider's own finer fields, never by
+  /// matching `failure_message` — that text is our user-facing copy, so a copy
+  /// edit would silently re-bucket the series with nothing failing.
+  ///
+  /// NULL unless `status = 'failed'`, and NULL on every row written before the
+  /// column shipped: history is deliberately NOT backfilled, so the series
+  /// starts at the TAM-186 deploy.
+  failureSubCode String? @map("failure_sub_code")
+
+  // ---- lineage --------------------------------------------------------------
+
+  /// The movement being reversed. Required on `refund` / `chargeback`.
+  parentTransactionId String? @map("parent_transaction_id") @db.Uuid
+
+  /// Set when a newer row took over this row's cycle claim, AFTER a gateway
+  /// read confirmed nothing is in flight. NULL on every live row, and the ONLY
+  /// escape from `transactions_recurring_cycle_unique`. `status` is left alone,
+  /// so a superseded row keeps its `failed` + `failure_phase` and the reason
+  /// survives.
+  supersededAt              DateTime? @map("superseded_at")
+  supersededByTransactionId String?   @map("superseded_by_transaction_id") @db.Uuid
+
+  // ---- immutable context snapshot -------------------------------------------
+
+  /// Denormalised from the mandate/plan at charge time. Business identifiers ⇒
+  /// TEXT, per the ID convention above. A plan's price can change; what we
+  /// charged for on a given day cannot.
+  planId    String? @map("plan_id")
+  productId String? @map("product_id")
+
+  mandate      Mandate?                @relation(fields: [mandateId], references: [id], onDelete: Restrict)
+  pdn          PaymentPdnNotification? @relation(fields: [pdnId], references: [id], onDelete: Restrict)
+  parent       Transaction?            @relation("TransactionReversal", fields: [parentTransactionId], references: [id], onDelete: Restrict)
+  reversals    Transaction[]           @relation("TransactionReversal")
+  supersededBy Transaction?            @relation("TransactionSupersede", fields: [supersededByTransactionId], references: [id], onDelete: Restrict)
+  supersedes   Transaction[]           @relation("TransactionSupersede")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// The anti-double-charge guard is a PARTIAL unique index and CANNOT be
+  /// declared here — Prisma has no `where` on `@@unique`. It lives in raw SQL
+  /// in the migration; see the block comment there.
+  ///
+  /// Do NOT "fix" that by adding `@@unique([mandateId, cycleDate])`: that
+  /// builds a FULL unique index, which forbids the supersede path this table
+  /// depends on to recover a cycle whose notification never reached the gateway.
+  @@index([mandateId, kind, status])
+  @@index([status, cycleDate])
+  @@index([status, submittedAt])
+  @@index([userId, createdAt])
+  @@index([parentTransactionId])
+  @@index([gatewayPaymentId])
+  @@index([pdnId])
+  /// Groups declines by WHY (TAM-186). Every failure dashboard filters on this.
+  @@index([failureSubCode])
+  @@map("transactions")
+}
+
+/// THE pre-debit notification NPCI requires 24–48h before every recurring
+/// debit — one row per (mandate, billing day), for the notification's whole life
+/// including re-arms.
+///
+/// WHY A TABLE AND NOT A COLUMN ON `transactions`. The provider's notify API is
+/// ASYNCHRONOUS: it answers "accepted" and the `presentation_sequence_id` arrives
+/// LATER, by callback or by status poll. Resolving that needs a row with its own
+/// status, its own dispatch counter, its own rotating reference id and the
+/// provider's raw bodies — none of which belong on a money-ledger row whose whole
+/// design is one-row-per-movement. Before this table existed the adapter had
+/// nowhere to put a pending notification, so it threw instead, and every cycle
+/// failed at notify.
+///
+/// OWNERSHIP — read this before changing either table. This table owns the
+/// NOTIFICATION. `transactions` owns MONEY and keeps SOLE custody of the
+/// anti-double-charge guarantee. A PDN row authorises nothing: money moves only
+/// in the presentation, which is driven off a `transactions` query, so this table
+/// sits UPSTREAM of that gate and cannot bypass it. Conversely a `transactions`
+/// row cannot present without a sequence id only this table can supply. The two
+/// are a SERIES, not two parallel authorities.
+model PaymentPdnNotification {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  mandateId String @map("mandate_id") @db.Uuid
+  /// Denormalised from the mandate, as on `transactions` — logical link, no FK.
+  userId    String @map("user_id") @db.Uuid
+
+  /// The billing day in IST as a UTC-midnight DATE — THE SAME VALUE as
+  /// `transactions.cycle_date` for this cycle, and half of this table's key.
+  /// A date, not a counter: prabhuji's cycle identity has always been the day.
+  cycleDate DateTime @map("cycle_date") @db.Date
+
+  /// OUR reference for THIS notification attempt, sent as the provider's
+  /// `reference_id`. RANDOM, and re-minted on every re-arm: the provider rejects
+  /// a reused reference (`error_duplicate_reference_id`), which is exactly what
+  /// sending the mandate's own `reference_id` every cycle used to hit.
+  referenceId String @unique @map("reference_id")
+
+  /// The provider's handle for the notification, and the ONLY thing the
+  /// presentation call can be addressed by.
+  ///
+  /// NULL IS NORMAL, not an error — the notify response may carry no id at all.
+  /// Three writers, all through `PdnRepository`: the sync notify response, the
+  /// status poll, and a webhook (which triggers a poll rather than being
+  /// believed). Cleared, never left stale, on re-arm.
+  presentationSequenceId String? @map("presentation_sequence_id")
+
+  amountPaise Int @map("amount_paise")
+
+  /// TIMESTAMPTZ, like every timestamp on the tables this ticket adds.
+  ///
+  /// The rest of this schema is `timestamp without time zone`, which stores a
+  /// wall-clock reading with no offset and therefore relies on every reader
+  /// guessing the same zone. It does not: `node-pg` parses such a column in the
+  /// PROCESS timezone, so the identical row reads five and a half hours apart on a
+  /// laptop and in a UTC container. For a table whose whole job is "when is this
+  /// debit due", that is not survivable. New tables carry the offset.
+  ///
+  /// NULLABLE since TAM-164, and the nullability is load-bearing: NULL means
+  /// "no earliest-debit instant is known", and any non-NULL value is REAL and
+  /// is enforced by `canPresentDebit`.
+  ///
+  /// It was NOT NULL and seeded with the cycle date, which made "unknown"
+  /// indistinguishable from "midnight". `canPresentDebit` therefore had to
+  /// ignore anything at or before the cycle date to avoid honouring the seed —
+  /// and a seed is UTC midnight, i.e. 05:30 IST, so honouring it would have
+  /// withheld the 00:00-05:30 slice of NPCI's first window from every cycle.
+  /// That filter also swallowed GENUINE early-morning instants: a Razorpay
+  /// mandate activated between 00:00 and 04:30 IST synthesises a real
+  /// `notify + TAT` that lands before the cycle date's midnight, and it was
+  /// silently discarded, presenting hours early and being rejected. Making the
+  /// column nullable removes the ambiguity at the source instead of widening a
+  /// comparison, which would have re-admitted the seed.
+  scheduledDebitAt DateTime? @map("scheduled_debit_at") @db.Timestamptz(6)
+
+  /// 'pending' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'failed'.
+  /// Bare TEXT with no CHECK on the value set, like every other status column in
+  /// this module — adding a status needs no migration. `accepted` means
+  /// ADDRESSABLE, and that one predicate IS enforced, by
+  /// `pdn_notifications_accepted_has_sequence_id` in the migration.
+  status String @default("pending")
+
+  /// Dispatch attempts under this row, incremented ONLY by the re-arm path.
+  /// Distinct from `transactions.attempt_no` (money claims) and
+  /// `transactions.retry_count` (presentations): a notify can fail and be
+  /// re-armed several times inside ONE money claim.
+  attempts Int @default(0)
+
+  failureReason String? @map("failure_reason")
+
+  /// The provider's own bodies, REDACTED via `shared/logs/redact.ts` before they
+  /// get here. What a "the provider says otherwise" ticket is answered from.
+  rawCreateResponse Json? @map("raw_create_response")
+  rawLatestStatus   Json? @map("raw_latest_status")
+
+  mandate      Mandate       @relation(fields: [mandateId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  /// ONE notification lineage per billing day. A FULL unique index, unlike
+  /// `transactions_recurring_cycle_unique` — and that difference is the point: a
+  /// re-arm ROTATES this row in place, so it never needs a second row, so it
+  /// never needs a supersede escape hatch.
+  @@unique([mandateId, cycleDate])
+  /// Two cycles of one mandate can never share a sequence id — that would be a
+  /// debit charged against the wrong month. NULLs are distinct in Postgres, so
+  /// many un-sequenced rows per mandate remain legal.
+  @@unique([mandateId, presentationSequenceId])
+  /// Serves the webhook's "which notification is this?" lookup.
+  @@index([presentationSequenceId])
+  /// Serves the sweep that polls for a sequence id which never arrived.
+  @@index([status, updatedAt])
+  @@map("pdn_notifications")
+}
+
+/// THE integration ledger: every request we sent a gateway and whatever came
+/// back. Append-only, never read on a hot path.
+///
+/// This is the table whose absence made a live incident diagnosable only by
+/// reading `failure_message` out of psql and grepping CloudWatch. Both HTTP
+/// clients already computed every column below at the point they wrote their log
+/// line; this persists it.
+///
+/// Every write is BEST-EFFORT and swallowed — see the write site in the clients.
+/// A failed audit write must never fail a payment.
+model PaymentProviderApiLog {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  provider  String
+  /// 'outbound' only today. Inbound callbacks live in `webhook_events`.
+  direction String @default("outbound")
+  /// Provider-AGNOSTIC verb, so one query answers "what did we ask of anyone?":
+  /// 'create_mandate' | 'get_mandate_status' | 'send_pdn' | 'get_pdn_status' |
+  /// 'present_debit' | 'get_presentation_status' | 'manage_mandate'.
+  operation String
+
+  httpMethod     String? @map("http_method")
+  requestUrl     String? @map("request_url")
+  /// Secret header VALUES replaced with "[redacted]" by explicit name list.
+  requestHeaders Json?   @map("request_headers")
+  /// Redacted via `redactPayload` — structure and every field name survive; the
+  /// payer's handle and our credentials do not.
+  requestBody    Json?   @map("request_body")
+
+  responseStatus Int?  @map("response_status")
+  responseBody   Json? @map("response_body")
+
+  /// The provider's APPLICATION-level status (Decentro's `api_status`). A 200
+  /// carrying FAILURE here is a failure — which is precisely what the client
+  /// used to read as success.
+  providerStatus       String? @map("provider_status")
+  providerMessage      String? @map("provider_message")
+  /// Decentro's `response_key` — the machine-readable error key everything
+  /// downstream classifies on.
+  providerResponseCode String? @map("provider_response_code")
+
+  referenceId           String? @map("reference_id")
+  providerTransactionId String? @map("provider_transaction_id")
+
+  /// The GATEWAY's own correlation id for this exchange, when it returns one.
+  ///
+  /// Cashfree sends `x-request-id` on every response and its support keys tickets
+  /// on it; Decentro's equivalent travels in the body as `decentroTxnId` and lands
+  /// in `provider_transaction_id` instead. Worth a column of its own precisely
+  /// because it is the FIRST thing a vendor asks for, and the only way to hand it
+  /// over used to be to still have the CloudWatch log.
+  providerRequestId String? @map("provider_request_id")
+
+  userId    String? @map("user_id") @db.Uuid
+  mandateId String? @map("mandate_id") @db.Uuid
+
+  /// Which try this was. GETs are retried, so one logical call can produce two
+  /// rows and the pair is only distinguishable by this column.
+  attempt      Int     @default(1)
+  durationMs   Int?    @map("duration_ms")
+  /// 'success' | 'failure' | 'timeout'
+  result       String  @default("success")
+  errorMessage String? @map("error_message")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([provider, operation, createdAt])
+  @@index([referenceId])
+  @@index([mandateId, createdAt])
+  @@index([result, createdAt])
+  @@map("payment_provider_api_logs")
+}
+
+/// THE inbox for inbound provider callbacks — the single dedupe ledger.
+///
+/// Supersedes `payment_callback_events`, which stays in the schema read-only for
+/// history and receives no new writes (contract-dropped in a later migration).
+/// There is deliberately ONE inbox: two would mean two dedupe ledgers, and a
+/// callback deduped in one could still be reprocessed via the other.
+///
+/// The India v3 payments stack has NO HMAC signature, so a callback is an
+/// untrusted TRIGGER: we record it here, then confirm the real state against the
+/// provider's status API before mutating any entitlement. Nothing in `payload` is
+/// ever believed — it only decides which row to go and ask about.
+model PaymentWebhookEvent {
+  id       String @id @default(uuid(7)) @db.Uuid
+  provider String @default("decentro")
+  /// 'mandate' | 'pdn' | 'presentation'. Inferred from which status field the
+  /// body carries, most-specific-first — the provider does not label callbacks.
+  kind     String
+
+  /// The provider's own event label when it sends one. Decentro doesn't;
+  /// nullable so a gateway that does needs no migration.
+  eventType String? @map("event_type")
+
+  /// `<kind>:<callback_txn_id>`, or `<kind>:sha256:<hex>` over the body with
+  /// `callback_attempt` excluded and keys sorted. Embedding the hash IN the key
+  /// keeps dedup to one plain unique index and one P2002 catch — no expression
+  /// index, and JSON key order (which is not stable between deliveries) cannot
+  /// defeat it.
+  dedupeKey String @unique @map("dedupe_key")
+
+  referenceId            String? @map("reference_id")
+  providerMandateId      String? @map("provider_mandate_id")
+  /// Routing field lifted out of a PDN or presentation callback. NEVER believed
+  /// as state.
+  presentationSequenceId String? @map("presentation_sequence_id")
+  callbackAttempt        Int?    @map("callback_attempt")
+
+  /// 'received' | 'processing' | 'processed' | 'ignored_unknown' |
+  /// 'ignored_duplicate' | 'failed'. `processing` = claimed by a callback
+  /// worker under a lease (TAM-260); free TEXT, so no enum migration.
+  status String @default("received")
+
+  /// Raw body with the payer handle redacted at the boundary. Never on any wire.
+  payload Json
+
+  /// OUR ids for whatever this callback turned out to be about, stamped at
+  /// processing time. Logical links, NO FK — an untrusted-trigger log must never
+  /// block a delete elsewhere.
+  relatedMandateId     String? @map("related_mandate_id") @db.Uuid
+  relatedPdnId         String? @map("related_pdn_id") @db.Uuid
+  relatedTransactionId String? @map("related_transaction_id") @db.Uuid
+
+  sourceIp     String?   @map("source_ip")
+  receivedAt   DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt  DateTime? @map("processed_at") @db.Timestamptz(6)
+  errorMessage String?   @map("error_message")
+
+  /// TAM-260 ack-first inbox. When a worker last claimed this row (the lease
+  /// start). NULL = never claimed — every row processed inline, and every
+  /// legacy row. A `processing` row whose lease has expired is re-claimable.
+  claimedAt               DateTime? @map("claimed_at") @db.Timestamptz(6)
+  /// How many times a worker has claimed this row. 0 for inline-processed and
+  /// legacy rows; the re-driver fails the row via `markFailed` at the cap.
+  attempts                Int       @default(0)
+  /// Razorpay `order.notification.delivered` only: the provider's delivery
+  /// time, lifted from the body at ingest so a deferred worker rebuilds the
+  /// `CallbackRef` from columns instead of re-parsing the redacted payload.
+  /// Routing input only, NEVER believed as state. NULL for every other event.
+  notificationDeliveredAt DateTime? @map("notification_delivered_at") @db.Timestamptz(6)
+
+  @@index([referenceId])
+  // Also serves the re-driver's claim scan (TAM-260): `processing` rows are
+  // bounded by worker concurrency, so the `claimed_at` filter needs no index.
+  @@index([status, receivedAt])
+  @@index([presentationSequenceId])
+  @@index([relatedPdnId])
+  @@map("webhook_events")
+}
+
+/// SUPERSEDED by `webhook_events` — read-only history, no new writes.
+///
+/// Kept so the rows written before TAM-141 remain queryable. A later contract
+/// migration drops it once nothing references the old data.
+///
+/// The India v3 payments stack has NO HMAC signature (that exists only on
+/// Decentro's separate global product), so a callback is treated as an
+/// untrusted TRIGGER: we record it here, then confirm the real state against
+/// the provider's status API before mutating any entitlement.
+model PaymentCallbackEvent {
+  id       String @id @default(uuid(7)) @db.Uuid
+  provider String @default("decentro")
+  /// 'mandate' | 'presentation'
+  kind     String
+
+  /// "<kind>:<callback_txn_id>", falling back to "<kind>:sha256(body)" when the
+  /// provider omits it. Insert-first: a unique violation IS the dedupe,
+  /// atomically — a read-then-write has a race two concurrent retries will
+  /// find. `callback_attempt` is deliberately NOT part of this key; it
+  /// increments on retries of the SAME event and would defeat the dedupe.
+  dedupeKey String @unique @map("dedupe_key")
+
+  referenceId       String? @map("reference_id")
+  providerMandateId String? @map("provider_mandate_id")
+  callbackAttempt   Int?    @map("callback_attempt")
+
+  /// 'received' | 'processed' | 'ignored_unknown' | 'ignored_duplicate' | 'failed'
+  status String @default("received")
+
+  /// Raw body with the payer handle redacted at the boundary. Never on any wire.
+  payload Json
+
+  sourceIp     String?   @map("source_ip")
+  receivedAt   DateTime  @default(now()) @map("received_at")
+  processedAt  DateTime? @map("processed_at")
+  errorMessage String?   @map("error_message")
+
+  @@index([referenceId])
+  @@index([status, receivedAt])
+  @@map("payment_callback_events")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-57: Content-platform foundation (deity taxonomy + engagement primitives).
+//
+// The shared substrate every Phase-1 content module (Aarti, Mantras, Ringtone,
+// Wallpaper, Status, Home, …) builds on. Landed once here, consumed by the
+// module tickets (TAM-61…76) ONLY through the `deity` / `engagement` facades
+// (`performServiceCall`) — never by importing these tables directly.
+//
+// MEDIA-URL CONVENTION (TAM-56 scope decision 2):
+//   All media in the Prabhuji platform is served as absolute `https` URLs
+//   stored in plain Postgres TEXT columns (`iconUrl`, `audioUrl`, `imageUrl`,
+//   `thumbnailUrl`, `coverUrl`, …). There is NO binary/BLOB storage and NO
+//   `MediaAsset` join table in Phase 1 — module content reads stay flat and the
+//   OpenAPI contract stays obvious. The shared Zod `mediaUrl` helper
+//   (`shared/schemas/media.ts`) validates the `https` shape at every module
+//   boundary. Pro-gated URLs (full `audioUrl`, book content) are resolved
+//   SERVER-SIDE by the owning module after an entitlement check — this schema
+//   only fixes the column/URL shape, never the gating.
+//
+// ID convention: surrogate PKs + uuid FKs are `@db.Uuid`; `contentType` and
+// deity `slug` are business/slug strings and stay TEXT (see the header block).
+// -----------------------------------------------------------------------------
+
+model Deity {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique // "hanuman", "shiva", "ganesha" — the stable content tag
+  iconUrl   String   @map("icon_url") // absolute https URL (media-URL convention)
+  sortOrder Int      @default(0) @map("sort_order")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  translations DeityTranslation[]
+
+  // Serves the `active = true ORDER BY sortOrder` listing query and covers the
+  // required `Deity(sortOrder)` index.
+  @@index([active, sortOrder])
+  @@map("deities")
+}
+
+model DeityTranslation {
+  id          String @id @default(uuid()) @db.Uuid
+  deityId     String @map("deity_id") @db.Uuid
+  locale      String
+  displayName String @map("display_name")
+
+  deity Deity @relation(fields: [deityId], references: [id], onDelete: Cascade)
+
+  // The unique constraint IS the `(deityId, locale)` index (per-(entity, locale)
+  // translation-table convention — never JSONB).
+  @@unique([deityId, locale], name: "deity_translation_unique")
+  @@map("deity_translations")
+}
+
+// Kuldevta (family clan-deity) registry — a deliberately disjoint vocabulary
+// from `Deity`. No FK to `deities`: the two catalogs must never be joinable
+// by accident (spec §2, §11).
+model KuldevtaArchetype {
+  id             String     @id                       // "shiva_form"
+  name           String
+  description    String
+  voiceDirection String     @map("voice_direction")
+  kuldevtas      Kuldevta[]
+  @@map("kuldevta_archetypes")
+}
+
+model Kuldevta {
+  id             String   @id @default(uuid()) @db.Uuid
+  slug           String   @unique                     // "khandoba" — closed vocabulary
+  nameRoman      String   @map("name_roman")
+  nameDevanagari String   @map("name_devanagari")
+  aliases        String[] @default([])
+  archetypeId    String   @map("archetype_id")
+  formOf         String?  @map("form_of")
+  gender         String                                // "devi" | "devta"
+  states         String[] @default([])
+  communities    String[] @default([])
+  templeName     String?  @map("temple_name")
+  templeVillage  String?  @map("temple_village")
+  templeDistrict String?  @map("temple_district")
+  templeState    String?  @map("temple_state")
+  iconography    String?
+  epithets       String[] @default([])
+  mantra         String?
+  weeklyDay      String?  @map("weekly_day")
+  festivals      String[] @default([])
+  offerings      String[] @default([])
+  niyam          String[] @default([])
+  toneNotes      String?  @map("tone_notes")
+  personaEnabled Boolean  @default(true) @map("persona_enabled")
+  confidence     String   @default("high")
+  notes          String?
+  active         Boolean  @default(true)
+  isFallback     Boolean  @default(false) @map("is_fallback")
+  humanReviewed  Boolean  @default(true)  @map("human_reviewed")
+  reviewedBy     String?  @map("reviewed_by")
+  reviewedAt     DateTime? @map("reviewed_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  archetype    KuldevtaArchetype     @relation(fields: [archetypeId], references: [id])
+  translations KuldevtaTranslation[]
+
+  @@index([active])
+  @@map("kuldevtas")
+}
+
+model KuldevtaTranslation {
+  id          String @id @default(uuid()) @db.Uuid
+  kuldevtaId  String @map("kuldevta_id") @db.Uuid
+  locale      String
+  displayName String @map("display_name")
+
+  kuldevta Kuldevta @relation(fields: [kuldevtaId], references: [id], onDelete: Cascade)
+
+  @@unique([kuldevtaId, locale], name: "kuldevta_translation_unique")
+  @@map("kuldevta_translations")
+}
+
+model KuldevtaRegionDefault {
+  regionCode         String  @id @map("region_code")   // "MH", "RJ-W", "ALL"
+  region             String
+  defaultKuldevtaSlug String @map("default_kuldevta_slug")
+  isNationalFallback Boolean @default(false) @map("is_national_fallback")
+  caveat             String?
+  @@map("kuldevta_region_defaults")
+}
+
+model UserKuldevta {
+  userId          String   @id @map("user_id") @db.Uuid
+  kuldevtaSlug    String   @map("kuldevta_slug")
+  assignmentTier  String   @map("assignment_tier")     // confirmed|likely|possible|fallback
+  matchedOn       String[] @default([]) @map("matched_on")
+  answers         Json
+  profile         Json
+  ragflowSessionId String? @map("ragflow_session_id")
+  assignedAt      DateTime @default(now()) @map("assigned_at")
+
+  @@index([kuldevtaSlug])
+  @@map("user_kuldevtas")
+}
+
+/// TAM-175 — the Postgres MIRROR of each user's warehouse-derived deity
+/// preference. The feed reads THIS, never ClickHouse.
+///
+/// #PATH_DECISION — the source of truth is `custom_user_properties` in the
+/// analytics warehouse, and it stays there. But `GET /home/feed` is the app's
+/// cold-start screen whose page hydrate is ~0.9 ms, and ClickHouse Cloud is a
+/// hosted analytical store reached over the public internet. Querying it per
+/// request would put a warehouse round trip on every app open and couple the
+/// feed's availability to the warehouse's — where today the feed survives Redis
+/// being down entirely. So a periodic job writes the few columns we need back
+/// here, which is what `docs/ANALYTICS-USER-PROPERTIES-BACKEND.md` already
+/// prescribes ("warehouse-derived, written back periodically").
+///
+/// A MISSING ROW IS A NORMAL STATE, not an error: it means "no preference
+/// known", every pool falls through to "any god", and the feed serves exactly
+/// what it served before this feature. That is also the degraded mode when the
+/// sync is behind or the warehouse is unreachable — stale or absent
+/// personalisation, never a broken feed.
+///
+/// Slugs, not uuids — `deities.slug` is what every content table filters on
+/// (`status_items`, `wallpapers`, `ringtones`, `audio_items`,
+/// `mantra_audio_items`, `pinned_content`), and the warehouse column holds a
+/// slug too despite being named `..._id`. Storing a uuid would mean a
+/// translation lookup on every feed request forever. No FK, matching those
+/// tables: a slug the CMS later retires must not break a user's stored
+/// preference, it must simply stop matching content.
+model UserDeityPreference {
+  userId String @id @map("user_id") @db.Uuid
+
+  /// `custom_user_properties.first_preferred_shared_deity_id` — the MAIN pool.
+  primaryDeitySlug String? @map("primary_deity_slug")
+
+  /// `custom_user_properties.second_preferred_shared_deity_id` — the SECOND pool.
+  secondaryDeitySlug String? @map("secondary_deity_slug")
+
+  /// `custom_user_properties.ad_god_name` — a slug, despite the column name.
+  /// Mirrored because it is the deity an ad attributed to this user and the
+  /// planned deity-change event distinguishes `source: ad`. NOT read by the
+  /// feed today; it is here so wiring it later is not another migration.
+  adDeitySlug String? @map("ad_deity_slug")
+
+  /// `custom_user_properties.preferred_shared_deity_source` — verbatim, not
+  /// validated against an enum. The warehouse owns this vocabulary and a value
+  /// we do not recognise must land in the mirror rather than be dropped.
+  source String?
+
+  /// The source row's `updated_at`. Doubles as the sync HIGH-WATER MARK: the
+  /// next run asks the warehouse for everything at or after `MAX()` of this
+  /// column, so no separate cursor table exists to drift out of step.
+  warehouseUpdatedAt DateTime? @map("warehouse_updated_at") @db.Timestamptz(6)
+
+  /// When this row was last written locally — for spotting a stalled sync
+  /// (`syncedAt` old across the board) apart from a quiet warehouse
+  /// (`warehouseUpdatedAt` old but `syncedAt` fresh).
+  ///
+  /// Deliberately NOT `@updatedAt`: the sync writes through raw SQL (one
+  /// batched upsert rather than N Prisma calls), and `@updatedAt` is a
+  /// client-side behaviour that raw SQL does not trigger. Promising it here
+  /// would be a lie; the upsert sets `now()` explicitly instead.
+  syncedAt DateTime @default(now()) @map("synced_at")
+
+  /// Serves the `MAX(warehouse_updated_at)` watermark read on every sync run.
+  @@index([warehouseUpdatedAt])
+  @@map("user_deity_preferences")
+}
+
+// Polymorphic engagement counters keyed `(contentType, contentId)` — one table
+// serves every content-bearing module. Adding module N+1 needs zero schema
+// change here: just a new `contentType` string guarded at that module's Zod
+// boundary. No DB FK from the counter to each content table (the owning module
+// validates `contentId` before calling); counters are non-critical denormalized
+// aggregates.
+model EngagementCounter {
+  id          String   @id @default(uuid()) @db.Uuid
+  contentType String   @map("content_type") // "aarti" | "mantra" | "ringtone" | "wallpaper" | "status" | "home_item"
+  contentId   String   @map("content_id") @db.Uuid
+  likeCount   Int      @default(0) @map("like_count")
+  viewCount   Int      @default(0) @map("view_count")
+  shareCount  Int      @default(0) @map("share_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // The unique constraint IS the required `(contentType, contentId)` index.
+  @@unique([contentType, contentId], name: "engagement_counter_unique")
+  @@map("engagement_counters")
+}
+
+// Source of truth for per-user like state; `EngagementCounter.likeCount` is the
+// denormalized aggregate. The two are kept consistent inside ONE repository
+// `$transaction` (a UserLike insert/delete + the counter increment/decrement).
+model UserLike {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  contentType String   @map("content_type")
+  contentId   String   @map("content_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // The unique constraint IS the required `(userId, contentType, contentId)`
+  // index and enforces like idempotency at the DB level.
+  @@unique([userId, contentType, contentId], name: "user_like_unique")
+  @@map("user_likes")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-63: Aarti & Bhajans (devotional audio library + sections + playback).
+//
+// The core business rule is DISCOVERY IS FREE, PLAYBACK IS PRO. This module
+// owns the audio catalogue, categories, homepage sections and per-user playback
+// history. It REUSES the TAM-57 foundation — deity taxonomy (via the `deity`
+// facade; `AudioDeityTag.deityId` is a logical reference to `deities.id`, no DB
+// FK, validated at the service/seed boundary) and engagement counters (via the
+// `engagement` facade; like/view/share counts are NEVER stored here).
+//
+// #EXPORT_CRITICAL — `audioStreamUrl` is a plain TEXT column here, but it is
+// ENTITLEMENT-GATED AT THE API, NOT THE DB: the aarti service nulls it before
+// serialization for any non-Pro (free) caller (Pro checked server-side via the
+// `subscription` facade). The DB always holds the real URL; the wire never
+// carries it for a free user.
+//
+// Play-count ownership: `AudioItem.playCount` is a LOCAL column (not the
+// engagement `viewCount`). "Most played" listing needs an indexed, sortable
+// column for keyset pagination, and a play is distinct from a view — so plays
+// are counted here and incremented transactionally on `POST /aarti/audios/:id/play`.
+// -----------------------------------------------------------------------------
+
+model AudioCategory {
+  id           String   @id @default(uuid()) @db.Uuid
+  slug         String   @unique // "prabhuji-originals", "stotram", "aarti", "chalisa", "mantra-jaap", "katha"
+  name         String
+  imageUrl     String?  @map("image_url") // absolute https URL (media-URL convention)
+  description  String?
+  displayColor String?  @map("display_color")
+  sortOrder    Int      @default(0) @map("sort_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  categoryTags AudioCategoryTag[]
+  translations AudioCategoryTranslation[]
+
+  @@index([isActive, sortOrder])
+  @@map("audio_categories")
+}
+
+// TAM-108 label-localization: per-(category, locale) OVERRIDES for the framing
+// labels `name` / `description`. ADDITIVE — the base columns on `AudioCategory`
+// remain the fallback value; a missing row resolves to the column. Mirrors the
+// `DeityTranslation` shape (`@@unique([<fk>, locale])`, `onDelete: Cascade`).
+model AudioCategoryTranslation {
+  id              String  @id @default(uuid()) @db.Uuid
+  audioCategoryId String  @map("audio_category_id") @db.Uuid
+  locale          String
+  name            String
+  description     String?
+
+  category AudioCategory @relation(fields: [audioCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([audioCategoryId, locale], name: "audio_category_translation_unique")
+  @@map("audio_category_translations")
+}
+
+model AudioItem {
+  id                 String    @id @default(uuid()) @db.Uuid
+  slug               String    @unique // stable content tag (idempotent seed key; TAM-61 references audio by slug)
+  title              String
+  coverImageUrl      String    @map("cover_image_url") // absolute https URL
+  audioStreamUrl     String    @map("audio_stream_url") // ENTITLEMENT-GATED at the API (see header block)
+  singerName         String?   @map("singer_name")
+  composerNames      String?   @map("composer_names")
+  language           String? // DEPRECATED (TAM-108): replaced by `languages`; dropped in step 3
+  deitySlug          String?   @map("deity_slug") // TAM-108: single-deity model; logical ref to deities.slug. Backfilled from audio_deity_tags (first slug). Supersedes deityTags (dropped step 3)
+  languages          String[]  @default([]) @map("languages") // TAM-108: language availability set; [] = all languages. Backfilled from `language`. Supersedes `language` (dropped step 3)
+  description        String?
+  publishedAt        DateTime? @map("published_at")
+  playCount          Int       @default(0) @map("play_count")
+  isFeatured         Boolean   @default(false) @map("is_featured")
+  isPrabhujiOriginal Boolean   @default(false) @map("is_prabhuji_original")
+  isActive           Boolean   @default(true) @map("is_active")
+  // TAM-125 downloads-manifest metadata. Nullable during the backfill window
+  // (`apps/api/src/core/downloads/scripts/backfill-download-metadata.ts`); the
+  // manifest endpoint's Zod schema tolerates `durationMs` staying null forever
+  // (mobile falls back to a `just_audio` local probe on first play).
+  sizeBytes          BigInt?   @map("size_bytes") // bytes of the underlying S3 object (ContentLength)
+  durationMs         Int?      @map("duration_ms") // audio duration in milliseconds; may stay null (client-probe fallback)
+  checksum           String?   @map("checksum") // lowercase-hex SHA-256 of the source object; 64 chars
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  categoryTags    AudioCategoryTag[]
+  deityTags       AudioDeityTag[]
+  playbackHistory UserPlaybackHistory[]
+  sectionItems    HomepageSectionItem[]
+
+  // Listing filters: most_played (playCount DESC), newest (publishedAt DESC).
+  // Each keyset-paginated on an indexed column.
+  @@index([isActive, playCount])
+  @@index([isActive, publishedAt])
+  @@map("audio_items")
+}
+
+// Many-to-many join: an audio item may carry multiple category tags.
+model AudioCategoryTag {
+  audioId    String @map("audio_id") @db.Uuid
+  categoryId String @map("category_id") @db.Uuid
+
+  audio    AudioItem     @relation(fields: [audioId], references: [id], onDelete: Cascade)
+  category AudioCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([audioId, categoryId])
+  @@index([categoryId])
+  @@map("audio_category_tags")
+}
+
+// Many-to-many join to the TAM-57 deity taxonomy. The tag stores the deity
+// SLUG (TEXT), not the uuid: TAM-57's deity facade is slug-oriented — `GET
+// /deities` exposes only `slug` (never a uuid), so a mobile deity filter can
+// only ever carry a slug, and `IDeityApi.getBySlug` is the designated tag-
+// validation hook. `deitySlug` is therefore a LOGICAL reference to
+// `deities.slug` (no DB FK across the module boundary; validated via the deity
+// facade at seed/service time). Slugs are business identifiers → TEXT per the
+// ID-convention header block.
+model AudioDeityTag {
+  audioId   String @map("audio_id") @db.Uuid
+  deitySlug String @map("deity_slug")
+
+  audio AudioItem @relation(fields: [audioId], references: [id], onDelete: Cascade)
+
+  @@id([audioId, deitySlug])
+  @@index([deitySlug])
+  @@map("audio_deity_tags")
+}
+
+// Drives `/aarti/main` ordering + section membership. The five BUILT-IN section
+// types (recently_played, deities, browse_categories, newly_added, most_played)
+// are resolved by the service from query rules and are still capped at one row
+// each — but by a PARTIAL unique index that Prisma cannot express:
+//   CREATE UNIQUE INDEX homepage_sections_builtin_type_key
+//     ON homepage_sections (section_type) WHERE section_type <> 'curated';
+// It lives in the MIGRATION, which is the source of truth for it (TAM-160).
+// Do not "restore" a plain `@unique` here — that would forbid a second curated
+// section, which is the whole point of the feature.
+//
+// `curated` is the CMS-authored type: MANY rows are allowed, each with its own
+// title/order and a hand-picked, explicitly ordered item list in
+// `homepage_section_items`. That is what lets an editor create e.g. "Top Aartis
+// listened to by 80s kids" without a deploy. `itemQuery` stays unused.
+model HomepageSection {
+  id          String   @id @default(uuid()) @db.Uuid
+  sectionType String   @map("section_type") // recently_played | deities | browse_categories | newly_added | most_played | curated
+  title       String
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  itemQuery   String?  @map("item_query")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  translations HomepageSectionTranslation[]
+  items        HomepageSectionItem[]
+
+  @@index([isActive, sortOrder])
+  @@map("homepage_sections")
+}
+
+// Explicit ordered membership for `curated` sections (CMS hand-picked lists).
+// The five built-in types resolve their items from query rules and never read
+// this join. Mirrors `WallpaperRowItem` — the same shape, the same set-semantics
+// write (`position` = array index), the same `(position, audio_id)` keyset.
+model HomepageSectionItem {
+  sectionId String @map("section_id") @db.Uuid
+  audioId   String @map("audio_id") @db.Uuid
+  position  Int
+
+  section HomepageSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  audio   AudioItem       @relation(fields: [audioId], references: [id], onDelete: Cascade)
+
+  @@id([sectionId, audioId])
+  @@index([sectionId, position])
+  @@map("homepage_section_items")
+}
+
+// TAM-108 label-localization: per-(section, locale) OVERRIDE for `title`.
+// ADDITIVE — `HomepageSection.title` stays as the fallback. Mirrors
+// `DeityTranslation`.
+model HomepageSectionTranslation {
+  id                String @id @default(uuid()) @db.Uuid
+  homepageSectionId String @map("homepage_section_id") @db.Uuid
+  locale            String
+  title             String
+
+  section HomepageSection @relation(fields: [homepageSectionId], references: [id], onDelete: Cascade)
+
+  @@unique([homepageSectionId, locale], name: "homepage_section_translation_unique")
+  @@map("homepage_section_translations")
+}
+
+// Per-user playback history — scoped to the JWT subject, source of the
+// "Recently Played" section (hidden when empty). Written ONLY on a Pro `/play`.
+model UserPlaybackHistory {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @map("user_id") @db.Uuid
+  audioId             String   @map("audio_id") @db.Uuid
+  lastPlayedAt        DateTime @default(now()) @map("last_played_at")
+  lastPositionSeconds Int?     @map("last_position_seconds")
+  completedCount      Int      @default(0) @map("completed_count")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  audio AudioItem @relation(fields: [audioId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, audioId], name: "user_playback_history_unique")
+  @@index([userId, lastPlayedAt])
+  @@map("user_playback_history")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-65: Mantras & Stutis (devotional mantra/stuti library + sections +
+// playlists + playback history + per-user counter preference).
+//
+// Structurally a sibling of the TAM-63 Aarti module — same core business rule:
+// DISCOVERY IS FREE, PLAYBACK IS PRO. This module owns the mantra/stuti
+// catalogue, its categories, homepage sections, per-user recently-played
+// history, and the per-user japa counter-target preference. It REUSES the
+// TAM-57 foundation — deity taxonomy (via the `deity` facade;
+// `MantraDeityTag.deitySlug` is a LOGICAL reference to `deities.slug`, no DB FK
+// across the module boundary, validated at the service/seed boundary) and
+// engagement counters (via the `engagement` facade with `contentType = "mantra"`;
+// like/view/share counts are NEVER stored here — a mantra like goes through the
+// shared EngagementService, mirroring the aarti #PATH_DECISION; there is no
+// local MantraLike table).
+//
+// #EXPORT_CRITICAL — `audio_url` is a plain TEXT column here, but it is
+// ENTITLEMENT-GATED AT THE API, NOT THE DB: the mantras service nulls it before
+// serialization for any non-Pro (free) caller (Pro checked server-side via the
+// `subscription` facade) on EVERY surface (detail, listing, sections, playlist).
+// The DB always holds the real URL; the wire never carries it for a free user.
+//
+// #EXPORT_CRITICAL — `mantra_text` is stored `@db.Text` as UTF-8 Devanagari with
+// its line breaks PRESERVED byte-for-byte. The service/repository never trim,
+// collapse whitespace, or normalize newlines.
+//
+// Play-count ownership mirrors aarti: `MantraAudioItem.playCount` is a LOCAL
+// column (distinct from the engagement `viewCount`) so "most played" listing has
+// an indexed, keyset-paginable column; incremented transactionally on the Pro
+// `POST /mantras/items/:id/recently-played` write.
+// -----------------------------------------------------------------------------
+
+model MantraCategory {
+  id                   String   @id @default(uuid()) @db.Uuid
+  slug                 String   @unique // "peace", "wealth", "health", "success", "love-relationship", "protection"
+  displayName          String   @map("display_name")
+  imageUrl             String?  @map("image_url") // absolute https URL (media-URL convention)
+  backgroundColorToken String?  @map("background_color_token")
+  sortOrder            Int      @default(0) @map("sort_order")
+  isActive             Boolean  @default(true) @map("is_active")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  categoryTags MantraCategoryTag[]
+  translations MantraCategoryTranslation[]
+
+  @@index([isActive, sortOrder])
+  @@map("mantra_categories")
+}
+
+// TAM-108 label-localization: per-(category, locale) OVERRIDE for `displayName`.
+// ADDITIVE — `MantraCategory.displayName` stays as the fallback. Mirrors
+// `DeityTranslation`.
+model MantraCategoryTranslation {
+  id               String @id @default(uuid()) @db.Uuid
+  mantraCategoryId String @map("mantra_category_id") @db.Uuid
+  locale           String
+  displayName      String @map("display_name")
+
+  category MantraCategory @relation(fields: [mantraCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([mantraCategoryId, locale], name: "mantra_category_translation_unique")
+  @@map("mantra_category_translations")
+}
+
+model MantraAudioItem {
+  id                  String    @id @default(uuid()) @db.Uuid
+  slug                String    @unique // stable content tag (idempotent seed key)
+  title               String
+  type                String // "mantra" | "stuti" — guarded at the Zod boundary (TEXT per ID-convention header)
+  artworkUrl          String    @map("artwork_url") // absolute https URL
+  audioUrl            String    @map("audio_url") // ENTITLEMENT-GATED at the API (see header block)
+  singerName          String?   @map("singer_name")
+  composerName        String?   @map("composer_name")
+  mantraText          String    @map("mantra_text") @db.Text // Devanagari, line breaks preserved (#EXPORT_CRITICAL)
+  transliterationText String?   @map("transliteration_text") @db.Text
+  language            String? // DEPRECATED (TAM-108): replaced by `languages`; dropped in step 3
+  deitySlug           String?   @map("deity_slug") // TAM-108: single-deity model; logical ref to deities.slug. Backfilled from mantra_deity_tags (first slug). Supersedes deityTags (dropped step 3)
+  languages           String[]  @default([]) @map("languages") // TAM-108: language availability set; [] = all languages. Backfilled from `language`. Supersedes `language` (dropped step 3)
+  description         String?   @db.Text
+  deepLinkUrl         String?   @map("deep_link_url")
+  publishedAt         DateTime? @map("published_at")
+  playCount           Int       @default(0) @map("play_count")
+  isFeatured          Boolean   @default(false) @map("is_featured")
+  isActive            Boolean   @default(true) @map("is_active")
+  // TAM-125 downloads-manifest metadata. Same shape as `AudioItem` (aarti +
+  // bhajan share `audio_items`; `mantra_audio_items` is a peer table). Nullable
+  // during the backfill window; see `AudioItem` for the contract note.
+  sizeBytes           BigInt?   @map("size_bytes") // bytes of the underlying S3 object (ContentLength)
+  durationMs          Int?      @map("duration_ms") // audio duration in milliseconds; may stay null (client-probe fallback)
+  checksum            String?   @map("checksum") // lowercase-hex SHA-256 of the source object; 64 chars
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  categoryTags   MantraCategoryTag[]
+  deityTags      MantraDeityTag[]
+  recentlyPlayed MantraRecentlyPlayed[]
+  sectionItems   MantraHomepageSectionItem[]
+
+  // Listing filters: most_played (playCount DESC), newest (publishedAt DESC).
+  // Each keyset-paginated on an indexed column.
+  @@index([isActive, playCount])
+  @@index([isActive, publishedAt])
+  @@map("mantra_audio_items")
+}
+
+// Many-to-many join: a mantra item may carry multiple category tags.
+model MantraCategoryTag {
+  itemId     String @map("item_id") @db.Uuid
+  categoryId String @map("category_id") @db.Uuid
+
+  item     MantraAudioItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  category MantraCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, categoryId])
+  @@index([categoryId])
+  @@map("mantra_category_tags")
+}
+
+// Many-to-many join to the TAM-57 deity taxonomy by SLUG (TEXT), not uuid —
+// same logical-reference pattern as `AudioDeityTag` (no DB FK across the module
+// boundary; validated via the deity facade at seed/service time).
+model MantraDeityTag {
+  itemId    String @map("item_id") @db.Uuid
+  deitySlug String @map("deity_slug")
+
+  item MantraAudioItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, deitySlug])
+  @@index([deitySlug])
+  @@map("mantra_deity_tags")
+}
+
+// Drives `/mantras/sections` ordering + section membership. The four BUILT-IN
+// section types (recently_played, deities, categories, newly_added) are resolved
+// by the service from query rules and are still capped at one row each — by a
+// PARTIAL unique index Prisma cannot express, which lives in the MIGRATION
+// (TAM-160), mirroring `HomepageSection`:
+//   CREATE UNIQUE INDEX mantra_homepage_sections_builtin_type_key
+//     ON mantra_homepage_sections (section_type) WHERE section_type <> 'curated';
+// `curated` is the CMS-authored type: MANY rows, each with a hand-picked ordered
+// list in `mantra_homepage_section_items`. `layoutType` + `showAllEnabled` stay
+// wire-facing rendering hints.
+model MantraHomepageSection {
+  id             String   @id @default(uuid()) @db.Uuid
+  sectionType    String   @map("section_type") // recently_played | deities | categories | newly_added | curated
+  title          String
+  layoutType     String   @map("layout_type") // horizontal_cards | deity_row | category_grid
+  showAllEnabled Boolean  @default(true) @map("show_all_enabled")
+  sortOrder      Int      @default(0) @map("sort_order")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  translations MantraHomepageSectionTranslation[]
+  items        MantraHomepageSectionItem[]
+
+  @@index([isActive, sortOrder])
+  @@map("mantra_homepage_sections")
+}
+
+// Explicit ordered membership for `curated` mantra sections. Mirrors
+// `HomepageSectionItem` / `WallpaperRowItem`.
+model MantraHomepageSectionItem {
+  sectionId String @map("section_id") @db.Uuid
+  itemId    String @map("item_id") @db.Uuid
+  position  Int
+
+  section MantraHomepageSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  item    MantraAudioItem       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([sectionId, itemId])
+  @@index([sectionId, position])
+  @@map("mantra_homepage_section_items")
+}
+
+// TAM-108 label-localization: per-(section, locale) OVERRIDE for `title`.
+// ADDITIVE — `MantraHomepageSection.title` stays as the fallback. Mirrors
+// `DeityTranslation`.
+model MantraHomepageSectionTranslation {
+  id                      String @id @default(uuid()) @db.Uuid
+  mantraHomepageSectionId String @map("mantra_homepage_section_id") @db.Uuid
+  locale                  String
+  title                   String
+
+  section MantraHomepageSection @relation(fields: [mantraHomepageSectionId], references: [id], onDelete: Cascade)
+
+  @@unique([mantraHomepageSectionId, locale], name: "mantra_homepage_section_translation_unique")
+  @@map("mantra_homepage_section_translations")
+}
+
+// Per-user recently-played history — scoped to the JWT subject, source of the
+// "Recently Played Mantras" section (hidden when empty). Written ONLY on a Pro
+// `POST /mantras/items/:id/recently-played`.
+model MantraRecentlyPlayed {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @map("user_id") @db.Uuid
+  itemId              String   @map("item_id") @db.Uuid
+  lastPlayedAt        DateTime @default(now()) @map("last_played_at")
+  lastProgressSeconds Int?     @map("last_progress_seconds")
+  completedCount      Int      @default(0) @map("completed_count")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  item MantraAudioItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId], name: "mantra_recently_played_unique")
+  @@index([userId, lastPlayedAt])
+  @@map("mantra_recently_played")
+}
+
+// Per-user japa counter-target preference (`last_selected_repeat_target`). One
+// row per user; the value is constrained to the exact set {7,11,21,108,1008} at
+// the Zod boundary (default 7). Persisted server-side so it survives reinstall.
+model MantraCounterPreference {
+  userId                   String   @id @map("user_id") @db.Uuid
+  lastSelectedRepeatTarget Int      @default(7) @map("last_selected_repeat_target")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  @@map("mantra_counter_preferences")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-67: Ringtone module (devotional ringtone grid + search + Pro-gated audio).
+//
+// The core business rule is DISCOVERY IS FREE, EVERYTHING PLAYABLE IS PRO —
+// like aarti/mantras, `audio_url` is ENTITLEMENT-GATED AT THE API (nulled before
+// serialization for non-Pro callers, Pro checked server-side via the
+// `subscription` facade). The DB always holds the real URL; the wire never
+// carries it for a free user. The free grid + search still return
+// `thumbnail_image_url` + metadata (so a free client can browse + hit the
+// paywall on tap), but NEVER `audio_url`.
+//
+// `deity_slug` logically references `deities.slug` (TAM-57) with NO DB FK across
+// the module boundary (validated via the deity facade at seed/service time) —
+// a ringtone carries EXACTLY ONE deity (single-deity cards, unlike the
+// many-tag aarti/mantras join tables). Like/share counts are NOT stored here —
+// they live in the shared TAM-57 engagement tables (contentType "ringtone").
+// `play_count` + `set_count` ARE local, indexed, sortable columns (a play/set is
+// distinct from an engagement view; the grid needs them for compact-count
+// display). `play_count` is incremented only past the ≥3s / ≥25%-duration rule,
+// deduped per (user, ringtone, session token) via `ringtone_play_sessions`.
+// Content ownership (catalogue) is CMS/ops (Phase 2 admin). Reversible: drop the
+// three tables.
+// -----------------------------------------------------------------------------
+
+model Ringtone {
+  id                String   @id @default(uuid()) @db.Uuid
+  slug              String   @unique // stable content tag (idempotent seed key)
+  title             String
+  deitySlug         String   @map("deity_slug") // logical ref to deities.slug (TAM-57); no DB FK
+  thumbnailImageUrl String   @map("thumbnail_image_url") // FREE — grid/search card art
+  audioUrl          String   @map("audio_url") // ENTITLEMENT-GATED at the API (see header)
+  playCount         Int      @default(0) @map("play_count")
+  setCount          Int      @default(0) @map("set_count")
+  tags              String[] @default([]) // free-text tags (GIN-indexed for search)
+  searchKeywords    String[] @default([]) @map("search_keywords") // curated search terms (GIN-indexed)
+  language          String? // DEPRECATED (TAM-108): replaced by `languages`; dropped in step 3
+  languages         String[] @default([]) @map("languages") // TAM-108: language availability set; [] = all languages. Backfilled from `language`. Supersedes `language` (dropped step 3). deitySlug already single here.
+  artistOrSource    String?  @map("artist_or_source")
+  deepLinkUrl       String?  @map("deep_link_url")
+  altText           String?  @map("alt_text")
+  shareTitle        String?  @map("share_title")
+  shareDescription  String?  @map("share_description")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  playSessions RingtonePlaySession[]
+
+  // Deity-filter (deitySlug, isActive).
+  @@index([deitySlug, isActive])
+  // GIN indexes back partial (ILIKE) array-element search over tags/keywords.
+  @@index([tags], type: Gin)
+  @@index([searchKeywords], type: Gin)
+  @@map("ringtones")
+}
+
+// Idempotent play-count dedupe: the client asserts a per-play `session_token`;
+// the SERVER counts a play at most once per (user, ringtone, session token) —
+// a replay/retry with the same token can never double-count. Written ONLY when
+// the ≥3s / ≥25%-duration rule is met (Pro-only). Cascade-deleted with the item.
+model RingtonePlaySession {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  ringtoneId   String   @map("ringtone_id") @db.Uuid
+  sessionToken String   @map("session_token")
+  countedAt    DateTime @default(now()) @map("counted_at")
+
+  ringtone Ringtone @relation(fields: [ringtoneId], references: [id], onDelete: Cascade)
+
+  // The unique constraint enforces per-session idempotency at the DB level.
+  @@unique([userId, ringtoneId, sessionToken], name: "ringtone_play_session_unique")
+  @@index([ringtoneId])
+  @@map("ringtone_play_sessions")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-69: Wallpaper module (CMS-driven static + live wallpaper discovery).
+//
+// The core business rule is DISCOVERY IS FREE — home rows, listing, detail,
+// preview, like and share are ALL free; ONLY the device-level Set Wallpaper /
+// Set Lockscreen action is Pro, and that gate is enforced CLIENT-SIDE (TAM-70).
+// So — UNLIKE aarti/mantras/ringtone — there is NO server entitlement gate here:
+// every preview + apply asset URL is returned to any authenticated user. The
+// routes require only the JWT guard.
+//
+// `deity_slug` tags logically reference `deities.slug` (TAM-57) via the
+// `wallpaper_deity_tags` M:N join with NO DB FK across the module boundary
+// (validated via the deity facade / at seed time) — a wallpaper may carry
+// multiple deity tags (like aarti/mantras). Like/share counts are NOT stored
+// here — they live in the shared TAM-57 engagement tables (contentType
+// "wallpaper"). `set_count` IS a LOCAL, indexed, sortable column: a device-set
+// is a distinct server-authoritative action (incremented only after a confirmed
+// successful set, TAM-70), it drives the "trending" row/listing ordering, and
+// the grid renders it as a compact count. Homepage rows are CMS-configurable via
+// data (`wallpaper_homepage_rows` + `wallpaper_row_items`) — add/remove/reorder/
+// rename with no app release. `row_type` query rules resolve server-side.
+// Content ownership (catalogue) is CMS/ops (Phase 2 admin). Reversible: drop the
+// four tables.
+// -----------------------------------------------------------------------------
+
+model Wallpaper {
+  id                         String   @id @default(uuid()) @db.Uuid
+  slug                       String   @unique // stable content tag (idempotent seed key)
+  title                      String
+  mediaType                  String   @map("media_type") // "static" | "live" — guarded at the Zod boundary (TEXT per ID-convention)
+  thumbnailUrl               String   @map("thumbnail_url") // grid/list card art (FREE)
+  previewImageUrl            String   @map("preview_image_url") // full preview still (FREE)
+  previewVideoUrl            String?  @map("preview_video_url") // live: looping preview clip
+  liveWallpaperAssetUrl      String?  @map("live_wallpaper_asset_url") // live: android-compatible asset
+  liveWallpaperPackage       String?  @map("live_wallpaper_package") // live: packaged live-wallpaper reference
+  fallbackStaticThumbnailUrl String?  @map("fallback_static_thumbnail_url") // live: still fallback for unsupported devices
+  deitySlug                  String?  @map("deity_slug") // TAM-108: single-deity model; logical ref to deities.slug. Backfilled from wallpaper_deity_tags (first slug). Supersedes deityTags (dropped step 3)
+  languages                  String[] @default([]) @map("languages") // TAM-108: language availability set; [] = all languages (matches wallpaper's current no-language behavior). No legacy `language` column existed here.
+  altText                    String?  @map("alt_text")
+  dominantColor              String?  @map("dominant_color") // hex token for placeholder tint
+  supportedAndroidVersions   String[] @default([]) @map("supported_android_versions") // live: min/compat android version hints
+  focalPoint                 Json?    @map("focal_point") // { x, y } normalized crop focus
+  safeAreaMetadata           Json?    @map("safe_area_metadata") // { top, bottom, left, right } clock/icon safe area
+  setCount                   Int      @default(0) @map("set_count") // LOCAL server-authoritative counter (drives trending)
+  isActive                   Boolean  @default(true) @map("is_active")
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
+
+  deityTags WallpaperDeityTag[]
+  rowItems  WallpaperRowItem[]
+
+  // Home-row + listing query rules: top_live filters (media_type, is_active);
+  // new orders by (is_active, created_at); trending orders by (is_active,
+  // set_count).
+  @@index([mediaType, isActive])
+  @@index([isActive, setCount])
+  @@index([isActive, createdAt])
+  @@map("wallpapers")
+}
+
+// Many-to-many join to the TAM-57 deity taxonomy by SLUG (TEXT), not uuid —
+// same logical-reference pattern as `MantraDeityTag` (no DB FK across the module
+// boundary; validated via the deity facade at seed/service time).
+model WallpaperDeityTag {
+  wallpaperId String @map("wallpaper_id") @db.Uuid
+  deitySlug   String @map("deity_slug")
+
+  wallpaper Wallpaper @relation(fields: [wallpaperId], references: [id], onDelete: Cascade)
+
+  @@id([wallpaperId, deitySlug])
+  @@index([deitySlug])
+  @@map("wallpaper_deity_tags")
+}
+
+// Drives `/wallpaper/home` ordering + row query rules. `row_type` resolves
+// server-side: top_live (active live by display_order), new (created_at desc),
+// trending (set_count desc), liked (current user's likes — hidden when empty),
+// custom (explicit `wallpaper_row_items` join and/or the optional filters).
+// CMS-configurable via data — add/remove/reorder/rename with no app release.
+model WallpaperHomepageRow {
+  id              String   @id @default(uuid()) @db.Uuid
+  rowKey          String   @unique @map("row_key") // stable idempotent seed/config key
+  title           String
+  rowType         String   @map("row_type") // top_live | new | trending | liked | custom
+  iconKey         String?  @map("icon_key")
+  mediaTypeFilter String?  @map("media_type_filter") // optional static|live narrowing (custom rows)
+  deityTagFilter  String?  @map("deity_tag_filter") // optional deity-slug narrowing (custom rows)
+  maxItems        Int      @default(20) @map("max_items")
+  displayOrder    Int      @default(0) @map("display_order")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  items        WallpaperRowItem[]
+  translations WallpaperHomepageRowTranslation[]
+
+  @@index([isActive, displayOrder])
+  @@map("wallpaper_homepage_rows")
+}
+
+// TAM-108 label-localization: per-(row, locale) OVERRIDE for `title`. ADDITIVE —
+// `WallpaperHomepageRow.title` stays as the fallback. Mirrors `DeityTranslation`.
+model WallpaperHomepageRowTranslation {
+  id                     String @id @default(uuid()) @db.Uuid
+  wallpaperHomepageRowId String @map("wallpaper_homepage_row_id") @db.Uuid
+  locale                 String
+  title                  String
+
+  row WallpaperHomepageRow @relation(fields: [wallpaperHomepageRowId], references: [id], onDelete: Cascade)
+
+  @@unique([wallpaperHomepageRowId, locale], name: "wallpaper_homepage_row_translation_unique")
+  @@map("wallpaper_homepage_row_translations")
+}
+
+// Explicit ordered membership for CUSTOM rows (curated hand-picked lists). Other
+// row types resolve their items from query rules, not this join.
+model WallpaperRowItem {
+  rowId       String @map("row_id") @db.Uuid
+  wallpaperId String @map("wallpaper_id") @db.Uuid
+  position    Int
+
+  row       WallpaperHomepageRow @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  wallpaper Wallpaper            @relation(fields: [wallpaperId], references: [id], onDelete: Cascade)
+
+  @@id([rowId, wallpaperId])
+  @@index([rowId, position])
+  @@map("wallpaper_row_items")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-71: Status Sharing module (CMS-curated vertical status feed + per-user
+// reusable overlay profile + fixed overlay template).
+//
+// The core business rule is EVERYTHING HERE IS FREE — browse, filter by deity,
+// customize + save the personal/business overlay profile, set an avatar URL,
+// like and view are ALL free; the ONLY Pro action is the final Share render,
+// enforced ENTIRELY CLIENT-SIDE (TAM-72). So — like wallpaper (TAM-69) and
+// UNLIKE aarti/mantras/ringtone — there is NO server entitlement gate here:
+// every media URL is returned to any authenticated user. The routes require
+// only the JWT guard (login required for the whole module).
+//
+// `deity_slug` tags logically reference `deities.slug` (TAM-57) via the
+// `status_deity_tags` M:N join with NO DB FK across the module boundary
+// (validated at seed time / via the deity facade) — a status item may carry
+// multiple deity tags (like wallpaper/mantras). Like/view/share counts are NOT
+// stored here — they live in the shared TAM-57 engagement tables (contentType
+// "status"); the view is recorded by the client after a 2s visibility threshold
+// (TAM-72), the API just exposes `recordView`. The overlay is ONE fixed Phase-1
+// template (composited client-side from the item's overlaySafeArea). Content
+// ownership (catalogue) is CMS/ops (Phase 2 admin). Reversible: DROP the tables.
+// -----------------------------------------------------------------------------
+
+model StatusItem {
+  id              String   @id @default(uuid()) @db.Uuid
+  slug            String   @unique // stable content tag (idempotent seed key)
+  title           String
+  mediaType       String   @map("media_type") // "image" | "video" — guarded at the Zod boundary (TEXT per ID-convention)
+  imageUrl        String?  @map("image_url") // image: full status still
+  videoUrl        String?  @map("video_url") // video: looping status clip
+  thumbnailUrl    String   @map("thumbnail_url") // grid/feed card art (FREE)
+  overlaySafeArea Json     @map("overlay_safe_area") // { top, bottom, left, right } normalized overlay-safe insets
+  language        String? // DEPRECATED (TAM-108): replaced by `languages`; dropped in step 3
+  deitySlug       String?  @map("deity_slug") // TAM-108: single-deity model; logical ref to deities.slug. Backfilled from status_deity_tags (first slug). Supersedes deityTags (dropped step 3)
+  languages       String[] @default([]) @map("languages") // TAM-108: language availability set; [] = all languages. Backfilled from `language`. Supersedes `language` (dropped step 3)
+  shareCaption    String?  @map("share_caption")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  deityTags StatusDeityTag[]
+
+  // Deity-filter (media_type, is_active).
+  @@index([mediaType, isActive])
+  @@map("status_items")
+}
+
+// Many-to-many join to the TAM-57 deity taxonomy by SLUG (TEXT), not uuid —
+// same logical-reference pattern as `WallpaperDeityTag` (no DB FK across the
+// module boundary; validated via the deity facade / at seed time).
+model StatusDeityTag {
+  statusId  String @map("status_id") @db.Uuid
+  deitySlug String @map("deity_slug")
+
+  status StatusItem @relation(fields: [statusId], references: [id], onDelete: Cascade)
+
+  @@id([statusId, deitySlug])
+  @@index([deitySlug])
+  @@map("status_deity_tags")
+}
+
+// One reusable overlay profile per user (q1 recommendation — a SINGLE row with
+// `active_profile_type` + both field sets, not two tables). The last saved/
+// selected type becomes active for overlay previews. Char limits + Indian
+// 10-digit mobile are enforced at the Zod route boundary (no OTP in Phase 1);
+// `avatar_image_url` is a served https URL (no bytes in Postgres). PII-ish —
+// every query is scoped to the authenticated `user_id`.
+model UserStatusProfile {
+  id                   String   @id @default(uuid(7)) @db.Uuid
+  userId               String   @unique @map("user_id") @db.Uuid
+  activeProfileType    String   @default("personal") @map("active_profile_type") // "personal" | "business"
+  personalDisplayName  String?  @map("personal_display_name") // <= 40 chars (Zod)
+  businessName         String?  @map("business_name") // <= 50 chars (Zod); required on business save
+  businessDetails      String?  @map("business_details") // <= 80 chars (Zod)
+  businessMobileNumber String?  @map("business_mobile_number") // Indian 10-digit (Zod); no OTP
+  avatarImageUrl       String?  @map("avatar_image_url") // served https URL
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("user_status_profiles")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-73: Horoscope module (provider abstraction + CMS daily content).
+//
+// Pro-only daily value feature. Two read surfaces: a FREE zodiac grid
+// (discovery) and a Pro-GATED daily result. The horoscope ENGINE source (AI vs
+// third-party API) is not finalized (PRD §6.10 / open-question q1) — Phase 1
+// ships a `HoroscopeProvider` INTERFACE whose only concrete impl is a
+// `CmsHoroscopeProvider` reading the seeded `daily_horoscope_result` rows below
+// (no external HTTP, no runtime LLM). Swapping the engine later is a one-class
+// change; these tables are the CMS ownership boundary for that content.
+//
+// DETERMINISM: `daily_horoscope_result` has a UNIQUE composite key
+// `(zodiac_id, mode_id, date_ist, language_code)` — two Pro users choosing the
+// same sign on the same IST civil date + language get the exact same stored
+// row (PRD §6.9). `date_ist` is the civil date in `Asia/Kolkata` stored as a
+// `YYYY-MM-DD` TEXT string (never a UTC timestamp) so the day boundary is
+// unambiguous and the key is stable.
+//
+// STEPS ARE DATA, NOT CODE: the horoscope sections live in
+// `horoscope_step_config` (add / remove / rename / reorder / enable via row
+// edits, no app release — PRD §6.5). The 8 Figma steps are seeded EXAMPLES.
+//
+// Localized labels are stored as a `{ locale: text }` JSON map on the row
+// (localizedDisplayName / localizedTitle) rather than a per-locale translation
+// table — the AC lists exactly five horoscope tables and the served step array
+// is itself JSON, so a JSON locale map keeps the module self-consistent.
+//
+// Media follows the TAM-56 URL convention: all assets are absolute https URLs
+// in TEXT columns; per-zodiac icons live on `zodiac_sign.icon_asset_url`, the
+// shared result background video + static fallback live in `media_assets`.
+// -----------------------------------------------------------------------------
+
+model ZodiacSign {
+  id                   String   @id @default(uuid()) @db.Uuid
+  zodiacId             String   @unique @map("zodiac_id") // stable slug: "aries".."pisces"
+  displayName          String   @map("display_name") // canonical English label — typo-free (Sagittarius, Capricorn)
+  localizedDisplayName Json     @map("localized_display_name") // { hi, en, ... } locale → label
+  iconAssetUrl         String   @map("icon_asset_url") // absolute https URL (media-URL convention)
+  sortOrder            Int      @default(0) @map("sort_order")
+  enabled              Boolean  @default(true)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  // Serves the `enabled = true ORDER BY sort_order` grid query.
+  @@index([enabled, sortOrder])
+  @@map("zodiac_sign")
+}
+
+model HoroscopeMode {
+  id        String   @id @default(uuid()) @db.Uuid
+  modeId    String   @unique @map("mode_id") // "daily_horoscope" (weekly/monthly are Phase 2)
+  modeName  String   @map("mode_name")
+  enabled   Boolean  @default(true)
+  phase     Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  steps HoroscopeStepConfig[]
+
+  @@index([enabled])
+  @@map("horoscope_mode")
+}
+
+model HoroscopeStepConfig {
+  id              String   @id @default(uuid()) @db.Uuid
+  stepId          String   @map("step_id") // "namaste", "lucky_number", ... (stable config key)
+  modeId          String   @map("mode_id")
+  title           String // canonical English title
+  localizedTitle  Json     @map("localized_title") // { hi, en, ... } locale → title
+  order           Int
+  enabled         Boolean  @default(true)
+  contentType     String   @map("content_type") // "text" | "number" | "color"
+  providerMapping String   @map("provider_mapping") // key the provider maps a step to
+  ttsEnabled      Boolean  @default(true) @map("tts_enabled")
+  safetyCategory  String   @map("safety_category") // safety bucket for validateContentSafety
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  mode HoroscopeMode @relation(fields: [modeId], references: [modeId], onDelete: Cascade)
+
+  // The unique constraint IS the idempotent seed key; the index serves the
+  // `mode_id + enabled ORDER BY order` catalogue read.
+  @@unique([modeId, stepId], name: "horoscope_step_config_unique")
+  @@index([modeId, order, enabled])
+  @@map("horoscope_step_config")
+}
+
+model DailyHoroscopeResult {
+  id                  String   @id @default(uuid()) @db.Uuid
+  zodiacId            String   @map("zodiac_id") // logical ref zodiac_sign.zodiac_id
+  modeId              String   @map("mode_id") // logical ref horoscope_mode.mode_id
+  dateIst             String   @map("date_ist") // civil IST date "YYYY-MM-DD"
+  languageCode        String   @map("language_code")
+  steps               Json // ordered [{ stepId, title, displayText, ttsText, order, contentType }]
+  providerName        String   @map("provider_name") // e.g. "cms"
+  generatedAt         DateTime @default(now()) @map("generated_at")
+  contentSafetyStatus String   @map("content_safety_status") // "passed"
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // The unique constraint IS the determinism key (PRD §6.9) + idempotent seed
+  // key; the index serves the per-date lookup.
+  @@unique([zodiacId, modeId, dateIst, languageCode], name: "daily_horoscope_result_unique")
+  @@index([zodiacId, dateIst, languageCode])
+  @@map("daily_horoscope_result")
+}
+
+model MediaAsset {
+  id                                String   @id @default(uuid()) @db.Uuid
+  assetKey                          String   @unique @map("asset_key") // stable idempotent seed/config key
+  resultBackgroundVideoUrl          String   @map("result_background_video_url") // looping devotional bg (absolute https)
+  resultBackgroundStaticFallbackUrl String   @map("result_background_static_fallback_url") // still fallback (absolute https)
+  assetVersion                      Int      @default(1) @map("asset_version")
+  createdAt                         DateTime @default(now()) @map("created_at")
+  updatedAt                         DateTime @updatedAt @map("updated_at")
+
+  @@map("media_assets")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-75: Books & Scriptures module. TWO CONTENT HIERARCHIES, ONE `content`
+// table discriminated by `content_type` (#PATH_DECISION):
+//
+//   major_book       → sub_book (kanda) → chapter (body_text + optional audio_url),
+//                      OR chapter directly under content (sub-book-less book, so
+//                      chapter.sub_book_id is NULLABLE). AUDIO LIVES ONLY ON
+//                      `chapter` (major-book path) — r7.
+//   direct_scripture → carries `content_body` INLINE on the content row; NO
+//                      sub_book / chapter rows and NEVER an audio URL.
+//
+// DISCOVERY IS FREE, READING IS PRO: the tables hold the text; the Pro gate on
+// `body_text` / `content_body` / `audio_url` is enforced AT THE API (books
+// service, fail-closed via the subscription facade), never in the DB.
+//
+// CMS OWNERSHIP: the write-side of these tables is owned by CMS/ops (Phase 2
+// admin UI); the API only reads. Seeds carry SYNTHETIC placeholder text only.
+// -----------------------------------------------------------------------------
+
+enum BookContentType {
+  major_book
+  direct_scripture
+
+  @@map("book_content_type")
+}
+
+// Direct-scripture taxonomy (PRD §8.2). Null for major books.
+enum BookCategory {
+  Chalisa
+  Aarti
+  Kavach
+  Stotram
+
+  @@map("book_category")
+}
+
+model BookContent {
+  id                   String          @id @default(uuid()) @db.Uuid
+  slug                 String          @unique // stable idempotent seed key + cross-module ref
+  contentType          BookContentType @map("content_type")
+  category             BookCategory? // null for major_book; one of the 4 for direct_scripture
+  title                String
+  coverImageUrl        String          @map("cover_image_url") // absolute https URL (media-URL convention)
+  author               String?
+  language             String          @default("hi") // DEPRECATED (TAM-108): replaced by `languages`; dropped in step 3
+  languages            String[]        @default([]) @map("languages") // TAM-108: language availability set; [] = all languages. Backfilled from `language`. Supersedes `language` (dropped step 3)
+  sortOrder            Int             @default(0) @map("sort_order")
+  offlineCacheEligible Boolean         @default(true) @map("offline_cache_eligible") // client may cache text only (r12/q2)
+  newlyAddedAt         DateTime?       @map("newly_added_at") // set → surfaced in the "Newly Added" home section
+  // INLINE direct-scripture body (Devanagari). Populated ONLY for direct_scripture
+  // rows; NULL for major_book (whose text lives on `chapter.body_text`). Reading
+  // this column is Pro-gated at the API.
+  contentBody          String?         @map("content_body")
+  isActive             Boolean         @default(true) @map("is_active")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+
+  subBooks BookSubBook[]
+  chapters BookChapter[]
+
+  @@index([contentType, sortOrder])
+  @@index([category, sortOrder])
+  @@index([newlyAddedAt])
+  @@map("content")
+}
+
+// A sub-book / kanda under a major_book `content`. Direct scripture has none.
+model BookSubBook {
+  id           String   @id @default(uuid()) @db.Uuid
+  contentId    String   @map("content_id") @db.Uuid
+  slug         String // idempotent seed key, unique within its parent content
+  title        String
+  order        Int      @default(0)
+  chapterCount Int      @default(0) @map("chapter_count") // stored count of child chapters (kept in sync by the seed)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  content  BookContent   @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  chapters BookChapter[]
+
+  @@unique([contentId, slug], name: "sub_book_content_slug_unique")
+  @@index([contentId, order])
+  @@map("sub_book")
+}
+
+// A chapter under a major_book. Belongs to a sub_book (kanda) when the book has a
+// kanda layer, else directly to the major-book `content` (sub_book_id NULL).
+// `audio_url` is the ONLY audio column in the module — major-book chapters only.
+model BookChapter {
+  id        String   @id @default(uuid()) @db.Uuid
+  contentId String   @map("content_id") @db.Uuid // the owning major-book content
+  subBookId String?  @map("sub_book_id") @db.Uuid // null → chapter hangs directly off content
+  slug      String // idempotent seed key, unique within its parent content
+  title     String
+  order     Int      @default(0)
+  bodyText  String   @map("body_text") // Devanagari chapter text — Pro-gated at the API
+  audioUrl  String?  @map("audio_url") // optional per-chapter audio (absolute https); null → client hides Listen Audio
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  content BookContent  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  subBook BookSubBook? @relation(fields: [subBookId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, slug], name: "chapter_content_slug_unique")
+  @@index([contentId, order])
+  @@index([subBookId, order])
+  @@map("chapter")
+}
+
+// CMS-owned SECTION TITLES + ordering for the Books surfaces. Mirrors the Aarti
+// module's `homepage_sections` (the in-repo reference): the API composes the
+// section CONTENT, this table owns the human COPY and the order it renders in, so
+// the app never hardcodes a heading.
+//
+// `key` values:
+//   - `carousel` | `categories` | `newly_added` → the three `GET /books/home`
+//     sections, emitted in `sort_order` (an inactive row hides the section);
+//   - `all_books` → NOT a home section: it is the title `GET /books` serves for
+//     the all-books listing SCREEN (`sort_order` is unused there). Kept in this
+//     table so every Books heading has exactly one CMS home.
+model BookSection {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique // carousel | categories | newly_added | all_books — stable idempotent seed key
+  title     String // CMS-owned display copy (e.g. "Newly Added Books")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  translations BookSectionTranslation[]
+
+  @@index([isActive, sortOrder])
+  @@map("book_sections")
+}
+
+// TAM-108 label-localization: per-(section, locale) OVERRIDE for `title`.
+// ADDITIVE — `BookSection.title` stays as the fallback. Mirrors
+// `DeityTranslation`.
+model BookSectionTranslation {
+  id            String @id @default(uuid()) @db.Uuid
+  bookSectionId String @map("book_section_id") @db.Uuid
+  locale        String
+  title         String
+
+  section BookSection @relation(fields: [bookSectionId], references: [id], onDelete: Cascade)
+
+  @@unique([bookSectionId, locale], name: "book_section_translation_unique")
+  @@map("book_section_translations")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-61: Home module (CMS-driven hero banners + a mixed, paginated devotional
+// feed). Postgres IS the Phase-1 CMS store — there is NO admin UI (TAM-56 Scope
+// Decision 1); content is served from these tables and populated by the
+// committed `home.seed.ts` which references content seeded by the sibling module
+// tickets. Ranking is IDENTICAL for free and Pro users (PRD §5, §10) — nothing
+// here branches on subscription status. Home shows the SAME UI to everyone; the
+// only Pro-conditional signal is the `is_pro_feature_discovery` banner flag the
+// CLIENT resolves into a paywall route (TAM-58) — it is authored server-side in
+// the seed and cannot be spoofed by the client.
+//
+// `home_feed_items` is DENORMALIZED display data — NOT a foreign key into the
+// wallpaper/status/aarti/mantra/ringtone tables. `content_type` + `module` +
+// `cta_*` + `header_destination_module` are curated routing strings the client
+// follows; the item carries its own hero/preview/share metadata. Like/view/share
+// counts are NOT stored here — they live in the shared TAM-57 engagement tables
+// (contentType "home_item", contentId = the feed item id); enrichment is one
+// batched facade call per page. `home_settings` is a single-row store-level
+// config toggling `feed_trending_first` (a CMS config change, not a code
+// release). Reversible: DROP the three tables.
+// -----------------------------------------------------------------------------
+
+model HomeBanner {
+  id                    String   @id @default(uuid()) @db.Uuid
+  mediaType             String   @map("media_type") // "image" | "video" — guarded at the Zod boundary (TEXT per ID-convention)
+  mediaUrl              String   @map("media_url") // hero image OR video (absolute https)
+  thumbnailUrl          String?  @map("thumbnail_url") // video still (null for image banners)
+  title                 String? // optional overlay title
+  destinationType       String   @map("destination_type") // linked_module | content_detail | pro_paywall | informational
+  destinationValue      String?  @map("destination_value") // module key | content id/deeplink | paywall id; NULL for informational
+  isProFeatureDiscovery Boolean  @default(false) @map("is_pro_feature_discovery") // client resolves → paywall route; forced true for pro_paywall
+  sortOrder             Int      @default(0) @map("sort_order")
+  isActive              Boolean  @default(true) @map("is_active")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  translations HomeBannerTranslation[]
+
+  // Banner list serves active rows in curated order.
+  @@index([isActive, sortOrder])
+  @@map("home_banners")
+}
+
+// TAM-108 label-localization: per-(banner, locale) OVERRIDE for the nullable
+// overlay `title`. ADDITIVE — `HomeBanner.title` stays as the fallback (itself
+// nullable). Mirrors `DeityTranslation`.
+model HomeBannerTranslation {
+  id           String @id @default(uuid()) @db.Uuid
+  homeBannerId String @map("home_banner_id") @db.Uuid
+  locale       String
+  title        String
+
+  banner HomeBanner @relation(fields: [homeBannerId], references: [id], onDelete: Cascade)
+
+  @@unique([homeBannerId, locale], name: "home_banner_translation_unique")
+  @@map("home_banner_translations")
+}
+
+model HomeFeedItem {
+  id                      String   @id @default(uuid()) @db.Uuid
+  slug                    String   @unique // stable content tag (idempotent seed key)
+  contentType             String   @map("content_type") // wallpaper | status | aarti | mantra | ringtone — DISPLAY/routing metadata, NOT the engagement key
+  module                  String // routing key (app route prefix the item's content lives under)
+  // TAM-175: the deity this card belongs to — a LOGICAL reference to
+  // `deities.slug`, matching every other content table (status_items,
+  // wallpapers, ringtones, audio_items, mantra_audio_items all store the slug,
+  // not the uuid). No DB FK, same as those.
+  //
+  // NULLABLE, and null is a real state rather than missing data: an
+  // admin-authored card need not name a deity, and three of the five producer
+  // tables have a nullable `deity_slug` themselves. A null card can only ever
+  // be placed in an "any god" slot — it is never eligible for a main/second
+  // pool. That is what keeps a deity-less catalogue serving exactly what it
+  // serves today.
+  deitySlug               String?  @map("deity_slug")
+  title                   String
+  subtitle                String?
+  label                   String? // free-text label (e.g. "Prabhuji Special")
+  badge                   String? // "trending" | "suggested" | null
+  // CMS-owned DISPLAY COPY for `badge` (e.g. "TRENDING"). The enum above is the
+  // machine token (analytics/ranking); this is the human string the client
+  // renders, so the copy is never hardcoded in the app. Contract (enforced in
+  // the service): non-null EXACTLY when `badge` is non-null — a badged row with
+  // no label is served with BOTH nulled (an unlabelled badge cannot be drawn).
+  badgeLabel              String?  @map("badge_label")
+  heroImageUrl            String   @map("hero_image_url") // feed card hero/thumbnail (absolute https)
+  audioPreviewUrl         String?  @map("audio_preview_url") // present only for aarti | mantra | ringtone
+  ctaLabel                String   @map("cta_label")
+  ctaDestinationType      String   @map("cta_destination_type") // routing kind for the CTA button
+  ctaDestinationValue     String   @map("cta_destination_value") // content id/slug/deeplink the CTA opens
+  // Side-car UUID of the underlying content the CTA opens, populated by the
+  // auto-feed sync (`upsertContentFeedCard`) from `ContentFeedCardInput.contentId`.
+  // Nullable: manually-authored `content_detail` cards created via the admin CMS
+  // don't carry it (the admin has no content-id concept for arbitrary CTAs).
+  // The client uses THIS field — not `ctaDestinationValue` (a slug) — to build
+  // by-id deep-links into the aarti/mantra play screens, which look up by id
+  // with no slug fallback. Absent ⇒ the client opens the owning module home.
+  ctaContentId            String?  @map("cta_content_id") @db.Uuid
+  headerDestinationModule String   @map("header_destination_module") // module the row header ("See all") routes to
+  shareTitle              String   @map("share_title") // assembled into shareMetadata.title on the wire
+  shareText               String   @map("share_text") // → shareMetadata.text
+  shareDeepLink           String   @map("share_deep_link") // → shareMetadata.deepLink
+  shareThumbnailUrl       String?  @map("share_thumbnail_url") // → shareMetadata.thumbnailUrl (nullable)
+  trendingScore           Int?     @map("trending_score") // nullable rank; drives trending-first ordering when feed_trending_first is on
+  isActive                Boolean  @default(true) @map("is_active")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  translations HomeFeedItemTranslation[]
+
+  // Trending-first order reads the trending segment by (is_active,
+  // trending_score) — indexed for keyset.
+  @@index([isActive, trendingScore])
+  // TAM-175: the deity-split pools. Prefix-covers the three shapes that ask for
+  // them — `(is_active)` for the whole-catalogue rotation read,
+  // `(is_active, content_type)` for a module pool, and all three for the admin
+  // list filter. The per-request pools are bucketed IN MEMORY from one
+  // catalogue read, so this index serves the admin surface and leaves the feed
+  // path a single scan rather than one query per pool.
+  @@index([isActive, contentType, deitySlug])
+  @@map("home_feed_items")
+}
+
+// TAM-108 label-localization: per-(item, locale) OVERRIDES for the feed-card
+// framing copy — all fields carried in ONE row per locale (like
+// `PaywallPlanTranslation`). ADDITIVE — the base columns on `HomeFeedItem` stay
+// as the fallback. The `badge`/`badgeLabel` invariant (badgeLabel non-null
+// EXACTLY when badge non-null) is re-applied at resolution time in the home
+// service, not the schema. `shareTitle`/`shareText` are intentionally NOT here
+// (product decision P4). Mirrors `DeityTranslation` (`onDelete: Cascade`).
+model HomeFeedItemTranslation {
+  id             String  @id @default(uuid()) @db.Uuid
+  homeFeedItemId String  @map("home_feed_item_id") @db.Uuid
+  locale         String
+  title          String
+  subtitle       String?
+  label          String?
+  ctaLabel       String  @map("cta_label")
+  badgeLabel     String? @map("badge_label")
+
+  item HomeFeedItem @relation(fields: [homeFeedItemId], references: [id], onDelete: Cascade)
+
+  @@unique([homeFeedItemId, locale], name: "home_feed_item_translation_unique")
+  @@map("home_feed_item_translations")
+}
+
+// Single-row store-level config. `feed_trending_first` flips the feed ordering
+// from CMS-curated (sort_order) to trending-first (trending_score DESC, then the
+// remaining CMS-ordered items) — a data/config change, not a code release. A
+// stable `key` keeps the row a singleton for idempotent upserts.
+model HomeSettings {
+  id                String   @id @default(uuid()) @db.Uuid
+  key               String   @unique @default("default") // singleton key
+  feedTrendingFirst Boolean  @default(false) @map("feed_trending_first")
+  // TAM-174 — the shortcut-grid gradient experiment's MASTER SWITCH, and the one
+  // control that needs neither a deploy nor the A/B console. While false nobody
+  // is bucketed, the abtest service is never consulted, and every user is served
+  // `theme: null` (today's grid). It defaults to false so the migration that adds
+  // the palettes is inert until ops deliberately starts the experiment.
+  //
+  // This is NOT the traffic split — that lives in the console (or, unconfigured,
+  // in `home.buckets.ts`). It is the kill switch, deliberately separate so
+  // stopping the experiment never depends on the service being reachable.
+  shortcutGridGradientEnabled Boolean @default(false) @map("shortcut_grid_gradient_enabled")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("home_settings")
+}
+
+// The Home feature-shortcut grid (`GET /home/shortcuts`) — the LABELS and their
+// ORDER are CMS-owned, not app constants. Previously the client hardcoded the
+// four entries ("Aarti & Bhajans", "Mantras & Stutis", "Set Ringtone",
+// "Set Wallpaper"); this table is the server story for them, so ops can rename,
+// reorder, deactivate or add a shortcut without an app release.
+//
+// #EXPORT_CRITICAL — DESTINATION SAFETY. `destination_type` / `destination_value`
+// mirror the `home_banners` convention EXACTLY, and `destination_value` is a
+// STABLE KEY (a module key such as "wallpaper"/"aarti"/"mantras"/"ringtone", or a
+// paywall id) — NEVER a URL, path or raw deep link. The client resolves it
+// through its own hardcoded route ALLOWLIST and treats an unknown key as a no-op,
+// so an untrusted CMS string can never become a navigable link. Anything
+// URL-shaped stored here is by definition a misconfiguration, not a deep link.
+//
+// `icon_key` is likewise a stable key the client resolves to a BUNDLED icon asset
+// (the one thing the product constraint allows to stay static in the app) — it is
+// not an image URL. TAM-132 adds `icon_url` alongside as a CMS-owned URL served
+// live to the app; the client's fallback ladder is (iconUrl → bundled iconKey →
+// nothing), so an unset `icon_url` cleanly degrades to the bundled asset.
+model HomeShortcut {
+  id               String   @id @default(uuid()) @db.Uuid
+  key              String   @unique // stable slug + idempotent seed key (e.g. "aarti_bhajans"); also the client's icon-asset lookup key
+  label            String // CMS-owned display copy (e.g. "Aarti & Bhajans")
+  destinationType  String   @map("destination_type") // linked_module | content_detail | pro_paywall | informational (same vocabulary as home_banners)
+  destinationValue String?  @map("destination_value") // STABLE KEY for the client allowlist (module key | content id | paywall id); NULL for informational. NEVER a URL/path.
+  iconKey          String?  @map("icon_key") // stable key → bundled client icon asset (not a URL)
+  // TAM-132 — wire-published CMS-owned icon URL (nullable); the client falls back
+  // to the bundled `iconKey` asset when null or when the fetch errors. Validated
+  // as `mediaUrl` at the boundary (https-only in prod, https+localhost in dev)
+  // and passed through `validateOwnedUrl` on the admin write path.
+  iconUrl          String?  @map("icon_url")
+  // TAM-132 backwards-compat gate — the minimum mobile `app_version` header
+  // value (semver string, e.g. "1.1.0") at which this shortcut becomes visible.
+  // NULL ⇒ no gate (visible to every client). Server-side filter applied in
+  // `HomeService.getShortcuts`; deliberately NOT projected on the public wire —
+  // the mobile client does not need to know it exists (the API just hides rows
+  // whose gate is not satisfied). The rollout use case: two new tiles
+  // (`set_status`, `horoscope`) with icons only bundled from the next mobile
+  // release. Ops can tweak the value via CMS/SQL if the mobile version changes.
+  minAppVersion    String?  @map("min_app_version")
+  sortOrder        Int      @default(0) @map("sort_order")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  translations HomeShortcutTranslation[]
+  // TAM-174 — per-A/B-arm presentation overrides (0..n, one per arm).
+  variants     HomeShortcutVariant[]
+
+  // Shortcut list serves active rows in curated order.
+  @@index([isActive, sortOrder])
+  @@map("home_shortcuts")
+}
+
+// TAM-108 label-localization: per-(shortcut, locale) OVERRIDE for `label`.
+// ADDITIVE — `HomeShortcut.label` stays as the fallback. Mirrors
+// `DeityTranslation`.
+model HomeShortcutTranslation {
+  id             String @id @default(uuid()) @db.Uuid
+  homeShortcutId String @map("home_shortcut_id") @db.Uuid
+  locale         String
+  label          String
+
+  shortcut HomeShortcut @relation(fields: [homeShortcutId], references: [id], onDelete: Cascade)
+
+  @@unique([homeShortcutId, locale], name: "home_shortcut_translation_unique")
+  @@map("home_shortcut_translations")
+}
+
+// TAM-174 — per-A/B-arm PRESENTATION for a shortcut tile.
+//
+// The experiment is not only a colour change: the CMS holds a complete tile
+// per arm — its own artwork, its own copy, its own palette — so a variant can
+// be merchandised independently rather than being the base row wearing a
+// different gradient.
+//
+// WHY A TABLE AND NOT MORE COLUMNS. A second arm as `label_b`/`icon_url_b`
+// columns would have to be widened again for a third, and every consumer would
+// have to know which suffix means what. A row per (shortcut, arm) adds an arm
+// with an INSERT, and the `variant` string is the same id the resolver already
+// speaks (`home.buckets.ts` / the A/B console's variant id).
+//
+// EVERY PRESENTATION FIELD IS NULLABLE, and null means "inherit the base row".
+// That is what lets ops theme the gradient arm without re-entering copy that
+// has not changed, and it is why `HomeShortcut` keeps its own `label`/`iconUrl`
+// — those are the default, not dead weight. A user in an arm with NO row here
+// sees exactly the base tile, which is also what every pre-TAM-174 client sees.
+//
+// `variant` is NOT an enum: the A/B console can name an arm this deployment has
+// never heard of, and the resolver already treats an unknown arm as control. A
+// Prisma enum would turn that into a write-time failure in the CMS instead.
+model HomeShortcutVariant {
+  id             String @id @default(uuid()) @db.Uuid
+  homeShortcutId String @map("home_shortcut_id") @db.Uuid
+  // The arm id — "control" or "gradient_v1" today. Matches the variant id the
+  // abtesting console serves and `home.buckets.ts` resolves.
+  variant        String
+
+  // --- presentation overrides (null ⇒ inherit the base HomeShortcut row) ---
+  label    String?
+  iconUrl  String? @map("icon_url")
+
+  // BACKWARDS-COMPAT GATE — the minimum mobile `app_version` that can RENDER
+  // this arm. NULL ⇒ no gate.
+  //
+  // This is the one thing standing between a live experiment and a broken grid
+  // on phones in the wild. An arm's assets and copy are authored for the layout
+  // that ships WITH it: `gradient_v1`'s artwork is a transparent 104×68 band
+  // sized for the new card, and a build that predates TAM-174 would paint it
+  // bottom-anchored inside the old 103×117 card. The tile would not crash — it
+  // would just look wrong, on a device nobody can reach.
+  //
+  // A client below the gate is served this arm's OVERRIDES NOT AT ALL and falls
+  // back to the base row, which is byte-for-byte what it renders today. So an
+  // old build is never in a new arm as far as it can tell.
+  //
+  // Same primitive and same vocabulary as `HomeShortcut.minAppVersion`
+  // (TAM-132), deliberately — one semver-gate concept on this surface, not two.
+  minAppVersion String? @map("min_app_version")
+
+  // The palette. ALL-OR-NOTHING as a group (enforced in the admin service —
+  // Postgres cannot express it without a CHECK Prisma would not manage), and a
+  // partial set is treated as "no palette" on read rather than published half.
+  //
+  // The STOPS are Figma gradient-handle fractions and are deliberately NOT
+  // clamped to [0,1]: `set_wallpaper` is authored 0.14734 → 1.4734. The client
+  // maps them to `Alignment` (which accepts out-of-range values), never to
+  // Flutter's `stops` (which rejects them).
+  themeBackgroundFrom     String? @map("theme_background_from")
+  themeBackgroundFromStop Float?  @map("theme_background_from_stop")
+  themeBackgroundTo       String? @map("theme_background_to")
+  themeBackgroundToStop   Float?  @map("theme_background_to_stop")
+  themeLabelColor         String? @map("theme_label_color")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  shortcut HomeShortcut @relation(fields: [homeShortcutId], references: [id], onDelete: Cascade)
+
+  @@unique([homeShortcutId, variant], name: "home_shortcut_variant_unique")
+  @@map("home_shortcut_variants")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-84: media ledger. One row is written AT PRESIGN TIME for every key the API
+// mints (POST /admin/media/presign). It is the API's record that "this URL is
+// one we minted" — the write-path gate (IMediaApi.validateOwnedUrl) checks key
+// shape + S3 existence, and this table backs audit ("who uploaded this",
+// `uploaded_by` = the presigning admin's JWT subject) and any FUTURE orphan
+// reaper / media-library UI.
+//
+// WHY WRITE IT NOW: backfilling it after the fact is IMPOSSIBLE — S3 does not
+// know who uploaded what or why (module/entity/field). It is cheap now and
+// unrecoverable later (ADR §A6).
+//
+// NOT a reaper input contract: reaping is explicitly NOT built (risk A-R3). A
+// row here does NOT imply the object is referenced by any content row — replaces
+// and deletes both orphan objects by design, and objects are never deleted.
+//
+// Rollback (safe — nothing references this table):
+//   DROP TABLE "media_objects";
+model MediaObject {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique // immutable `<module>/<entity>/<uuid>.<ext>` S3 key
+  contentType String   @map("content_type")
+  sizeBytes   Int      @map("size_bytes") // client-asserted, pinned by the signed Content-Length (< 200 MB fits Int)
+  module      String
+  entity      String
+  field       String
+  uploadedBy  String   @map("uploaded_by") @db.Uuid // presigning admin's JWT subject — never client-supplied
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Unique key backs the ownership lookup; (module, entity) backs a future
+  // media-library filter + orphan reaper scan.
+  @@index([module, entity])
+  @@map("media_objects")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-173: CMS-controlled pinned content.
+//
+// A pin is a PURE per-request overlay on the twice-daily rotation (see
+// `docs/FEED-ROTATION.md`). Home + Status feeds prepend ACTIVE pins on serve;
+// the rotation plan cache (`apps/api/src/shared/rotation/plan-cache.ts`) is
+// UNTOUCHED (its key stays `(epoch, catalogue)`), and the public wire carries
+// no `isPinned` field. Every route lives under `/admin/pinned-content/*` and
+// is tagged `admin`, so `openapi.public.json` is byte-unchanged (TAM-85).
+//
+// `content_id` targets a table implied by `surface`: `home` → `home_feed_items`,
+// both Status surfaces → `status_items`. Deliberately NO real FK — the write
+// path validates via `performServiceCall` (see spec §PATH_DECISION); the read
+// path drops dangling ids silently (matches rotation's stale-id behaviour).
+//
+// Soft-delete only (`deleted_at`); the partial-unique index on
+// `(surface, deity_slug, pin_position) WHERE deleted_at IS NULL` depends on it,
+// as does the append-log audit story. Full raw SQL for the partial index +
+// the deity-slug CHECK constraint lives in the migration.
+// -----------------------------------------------------------------------------
+enum PinSurface {
+  home
+  status_all_gods
+  status_deity
+
+  @@map("pin_surface")
+}
+
+/// Append-log actions. All four kinds map 1:1 to a service method; adding a
+/// kind is a migration + a handler branch.
+enum PinAuditAction {
+  create
+  update
+  delete
+  restore
+
+  @@map("pin_audit_action")
+}
+
+model PinnedContent {
+  id           String     @id @default(uuid()) @db.Uuid
+  surface      PinSurface
+  /// Required when `surface = status_deity`, NULL otherwise. A logical
+  /// reference to `deities.slug`; validated via the deity facade on write
+  /// (arch boundaries forbid a direct Prisma read from outside `core/deity/`).
+  deitySlug    String?    @map("deity_slug")
+  /// FK target implied by `surface` — no real DB FK because the target table
+  /// differs. Validated at write via the owning module's facade; a dangling
+  /// id at read time is silently dropped (matches rotation's stale-id rule).
+  contentId    String     @map("content_id") @db.Uuid
+  pinPosition  Int        @map("pin_position")
+
+  startAt      DateTime   @map("start_at") @db.Timestamptz(6)
+  endAt        DateTime   @map("end_at")   @db.Timestamptz(6)
+
+  createdAt    DateTime   @default(now())          @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt               @map("updated_at") @db.Timestamptz(6)
+  /// Admin `User.id` — the ops agent who created the pin. Populated from the
+  /// authenticated JWT subject, NEVER from the request body.
+  createdBy    String     @map("created_by") @db.Uuid
+  /// Admin `User.id` — last mutator. Populated from the JWT subject.
+  updatedBy    String     @map("updated_by") @db.Uuid
+  /// Soft-delete tombstone. NULL = live. See migration for the raw partial
+  /// unique index that keys off it.
+  deletedAt    DateTime?  @map("deleted_at") @db.Timestamptz(6)
+
+  /// Covers the per-request active-pin lookup: WHERE surface = $1 AND
+  /// deity_slug IS NOT DISTINCT FROM $2 AND start_at <= $now AND end_at > $now.
+  @@index([surface, deitySlug, startAt, endAt], name: "pinned_content_active_lookup")
+  @@map("pinned_content")
+}
+
+model PinnedContentAudit {
+  id              String         @id @default(uuid()) @db.Uuid
+  /// Loose reference to `pinned_content.id` — kept as UUID (not a Prisma
+  /// @relation) so the audit trail survives even a hypothetical future hard
+  /// delete of the pin row.
+  pinnedContentId String         @map("pinned_content_id") @db.Uuid
+  action          PinAuditAction
+  /// Admin `User.id` from the JWT subject. Every write op that lands a pin
+  /// row also lands one audit row inside the SAME transaction.
+  actorUserId     String         @map("actor_user_id") @db.Uuid
+  /// The pin row AFTER the action, as a JSON snapshot. Redacts nothing —
+  /// every field is non-sensitive admin metadata.
+  snapshot        Json
+  /// Field-level diff `{ before, after }` on update/delete/restore; NULL on
+  /// create. Kept as JSON so the shape can grow without a migration.
+  diff            Json?
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([pinnedContentId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("pinned_content_audit")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-174: Generalized in-app modals, armed by audience-campaign webhooks.
+//
+// Nothing here names a specific modal. The key, copy, deep link, surface and
+// caps all arrive on the arm webhook, so a second modal is a campaign row and
+// no deploy.
+//
+// The caps are SERVER-owned and per-USER, not per-device: a reinstall or a
+// second phone must not reset a lifetime limit of three.
+// -----------------------------------------------------------------------------
+
+/// One user's standing with one modal, per trigger source. Three concerns that
+/// share a key AND a lifetime live on one row: the standing eligibility a
+/// webhook granted, the cap ledger, and the halt.
+///
+/// They were briefly separate tables. Once audience membership became STANDING
+/// (timeToExitDays: null — see the spec) a show stopped consuming the arm, so
+/// the two shared a lifetime and the split bought nothing.
+model ModalUserState {
+  id            String @id @default(uuid(7)) @db.Uuid
+  userId        String @map("user_id") @db.Uuid
+  modalKey      String @map("modal_key")
+  triggerSource String @map("trigger_source")
+
+  /// Standing eligibility — written by the `arm` webhook.
+  ///
+  /// `surface` and `content` are NULLABLE / defaulted because a HALT can arrive
+  /// before any arm ever does: audience B's entry rule fires for a user who
+  /// shared a named status without ever qualifying for the modal, and that row
+  /// is created carrying only the halt.
+  surface           String?
+  content           Json      @default("{}")
+  /// The transition's own time (`occurred_at`), NOT receipt time.
+  armedAt           DateTime? @map("armed_at")
+  lastOutcomeModule String?   @map("last_outcome_module")
+  audienceId        Int?      @map("audience_id")
+  audienceName      String?   @map("audience_name")
+  campaignId        Int?      @map("campaign_id")
+
+  /// Cap ledger — written by each `viewed` impression and nothing else.
+  showCount        Int       @default(0) @map("show_count")
+  shownTodayCount  Int       @default(0) @map("shown_today_count")
+  /// `YYYY-MM-DD` civil date in Asia/Kolkata. A TEXT day, never a UTC
+  /// timestamp, so the boundary is unambiguous — same convention as
+  /// `daily_horoscope_result.date_ist`.
+  lastShownDateIst String?   @map("last_shown_date_ist")
+  lastShownAt      DateTime? @map("last_shown_at")
+  /// Last-written by the newest arm, so a modal whose campaign changes its caps
+  /// takes effect on the next arm without a deploy.
+  maxLifetime      Int       @default(3) @map("max_lifetime")
+  maxPerDay        Int       @default(1) @map("max_per_day")
+
+  /// The halt — written by a `halt` webhook with `origin: "event"`. Set once,
+  /// never cleared by anything, including a later arm.
+  haltedAt     DateTime? @map("halted_at")
+  haltedReason String?   @map("halted_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, modalKey, triggerSource])
+  /// The read path: this user's modals for one surface.
+  @@index([userId, surface])
+  @@map("modal_user_states")
+}
+
+/// Idempotency for at-least-once dispatch, and the audit trail behind "why did
+/// this user see it three times".
+///
+/// `task_id` is the primary key because it is the only value on a dispatch that
+/// is unique per send AND stable across every redelivery of that send.
+/// `(campaign_message_id, user_id)` is not: it repeats across all three allowed
+/// shows.
+model ModalHookDelivery {
+  taskId          String   @id @map("task_id")
+  action          String
+  origin          String
+  userId          String   @map("user_id") @db.Uuid
+  modalKey        String   @map("modal_key")
+  sourceEventName String?  @map("source_event_name")
+  audienceId      Int?     @map("audience_id")
+  campaignId      Int?     @map("campaign_id")
+  /// false has TWO writers, and this column carries no reason for which one
+  /// fired: (1) an `arm` onto an already-halted row (`modals.service.ts`'s
+  /// `halted` branch), and (2) an `arm` refused at intake because it could
+  /// never be served — missing surface/content (`modals.service.ts`'s
+  /// `"unservable"` branch). NOT a duplicate delivery either way: a
+  /// duplicate conflicts on this table's `task_id` primary key and writes no
+  /// row at all, so this column is only ever read back for a row that really
+  /// was inserted.
+  applied         Boolean  @default(true)
+  receivedAt      DateTime @default(now()) @map("received_at")
+
+  @@map("modal_hook_deliveries")
+}
+
+/// Append-only. What the server believes it showed, beside what the app
+/// reported — the join that explains a funnel drop.
+model ModalImpression {
+  id                BigInt   @id @default(autoincrement())
+  userId            String   @map("user_id") @db.Uuid
+  modalKey          String   @map("modal_key")
+  triggerSource     String   @map("trigger_source")
+  /// viewed | cta_clicked | dismissed
+  action            String
+  /// cross | back | outside_tap. Only meaningful with `dismissed`.
+  dismissMethod     String?  @map("dismiss_method")
+  showNumber        Int      @map("show_number")
+  lastOutcomeModule String?  @map("last_outcome_module")
+  occurredAt        DateTime @default(now()) @map("occurred_at")
+
+  @@index([userId, modalKey, occurredAt])
+  @@map("modal_impressions")
+}
+
+// -----------------------------------------------------------------------------
+// TAM-N: Content & user reporting (app-store UGC-reporting compliance).
+//
+// A report is always filed FROM a status, so `status_id` is NOT NULL for both
+// `type` values. `reported_user_id` is the status's creator — today that is
+// always the single house creator account (see `core/status/status.creator.ts`),
+// because every status is CMS-authored deity content with no real author. It is
+// resolved SERVER-SIDE from the reported status and is never read from the
+// request body: a client must not be able to name a victim.
+//
+// Consequence worth knowing before reading this table: with one house creator,
+// a `user` report and a `content` report on the same status differ ONLY in the
+// `type` column — same `status_id`, same `reported_user_id`. That is correct,
+// not duplicated data.
+// -----------------------------------------------------------------------------
+
+/// What the reporter is objecting to. `user` = the account the content is
+/// attributed to; `content` = the status itself.
+enum ReportType {
+  user
+  content
+
+  @@map("report_type")
+}
+
+/// Append-only moderation record. One row per submitted report; nothing in the
+/// product reads it back yet (no admin surface — that is a separate ticket).
+///
+/// Deliberately has NO Prisma `@relation` to `User` or `StatusItem`. These are
+/// logical references (the `UserLike` precedent above). A real FK would force an
+/// `onDelete` choice and both options are wrong: `Cascade` destroys the
+/// moderation trail on account deletion, which is the one record this table
+/// exists to keep, and `Restrict` blocks account deletion outright.
+model Report {
+  id   String     @id @default(uuid()) @db.Uuid
+  type ReportType
+
+  /// The status the report was filed from. Logical ref to `status_items.id`;
+  /// existence is validated through the status module's facade at write time.
+  statusId String @map("status_id") @db.Uuid
+
+  /// The account being reported — the status's creator, resolved server-side.
+  /// Logical ref to `User.id`. NEVER taken from the request body.
+  reportedUserId String @map("reported_user_id") @db.Uuid
+
+  /// Who filed it. Logical ref to `User.id`, taken from the JWT subject.
+  reporterUserId String @map("reporter_user_id") @db.Uuid
+
+  /// Contact address typed into the sheet. Seeded from the account's email when
+  /// it has one (OTP accounts do not) but freely editable, so it is NOT
+  /// necessarily `User.email` for `reporter_user_id`. Never logged.
+  reporterEmail String @map("reporter_email")
+
+  /// The reporter's free-text reason, stored verbatim after trim. Private:
+  /// never echoed in a response, never logged, never sent to analytics.
+  reason String
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([reportedUserId, createdAt])
+  @@index([reporterUserId, createdAt])
+  @@index([statusId])
+  @@map("reports")
+}

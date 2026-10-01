@@ -1,0 +1,20 @@
+-- TAM-152: the mandate recurrence rule becomes 'AFTER' with no day number.
+--
+-- Metadata-only. `ALTER COLUMN ... SET DEFAULT` rewrites no rows and takes no
+-- table lock beyond a brief ACCESS EXCLUSIVE on the catalogue entry, so it is
+-- safe mid-deploy (docs/DEPLOYMENT.md, "Write additive migrations").
+--
+-- Existing rows are deliberately NOT backfilled. `mandates.rule_type` records
+-- the terms a payer actually consented to at registration; every mandate
+-- authorised before this carried 'BEFORE'/28 on the wire and Decentro accepted
+-- it. Rewriting those rows would restate what those customers approved.
+--
+-- The default is also, today, unreachable: `MandateService` always supplies
+-- `ruleType` explicitly from MANDATE_CONSENT_TERMS. It is moved anyway so the
+-- column's declared default and the value the code sends cannot disagree —
+-- which is the whole failure mode TAM-152 exists to close.
+--
+-- Note this field is omitted from the Decentro request entirely while every
+-- plan is AS_PRESENTED. It ships only if a calendar-frequency plan is ever
+-- registered.
+ALTER TABLE "mandates" ALTER COLUMN "rule_type" SET DEFAULT 'AFTER';

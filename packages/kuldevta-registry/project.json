@@ -1,0 +1,17 @@
+{
+  "name": "kuldevta-registry",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/kuldevta-registry/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project kuldevta-registry --web",
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/kuldevta-registry",
+        "command": "vitest run"
+      }
+    }
+  }
+}

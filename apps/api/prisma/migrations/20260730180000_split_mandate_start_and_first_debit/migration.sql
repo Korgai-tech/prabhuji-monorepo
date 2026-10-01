@@ -1,0 +1,43 @@
+-- TAM-143: separate "when the mandate becomes valid" from "when the first
+-- full-price debit is due", so a registration deposit can be taken on day 0.
+--
+-- ADDITIVE. One nullable column. Safe to apply while the previous version's
+-- tasks are still serving, and no scheduler disarm is needed for SCHEMA reasons.
+--
+-- WHY THIS EXISTS. `mandates.start_date` carried two meanings at once: the wire
+-- `start_date` we register with, AND the day of the first debit (a trial was
+-- expressed by pushing it out, and `next_debit_date` was then copied from it at
+-- activation). Decentro refuses `is_first_txn_amount` — the ₹2 taken with the
+-- UPI PIN — on a mandate whose `start_date` is in the future, so the two
+-- meanings can no longer share a column. `start_date` is now always the
+-- registration day and `next_debit_date` is written at registration.
+--
+-- WHY THE TRIAL DEADLINE BECOMES A COLUMN rather than staying a derivation.
+-- Activation used to compute it as `start_date > now ? start_date : null`. Both
+-- halves of that are now wrong: `start_date` is today for every mandate (so it
+-- would never grant a trial), and the comparison itself was the trial-expiry
+-- bug — `start_date` is a DATE, which reads back as UTC midnight, so a "1 day"
+-- trial granted at 14:00 IST lapsed at 05:30 IST the next morning after ~15
+-- hours. Whether a trial was granted is decided at REGISTRATION, where the
+-- one-trial-per-user rule is applied; it is now recorded there too.
+--
+-- TIMESTAMPTZ for the same reason as 20260730120000: `node-pg` parses
+-- `timestamp without time zone` in the PROCESS timezone, so an entitlement
+-- deadline stored without an offset reads 5.5 hours apart on an IST laptop and
+-- in a UTC container. This one decides when a user loses Pro; it carries the
+-- offset.
+--
+-- BACKFILL: none, deliberately. `trial_ends_at` is NULL on every existing row,
+-- which reads as "no trial" — and the entitlement those rows already carry
+-- lives in `subscriptions.trial_ends_at`, written at activation, not here.
+-- Nothing re-reads a mandate to re-grant a trial, so leaving these NULL cannot
+-- revoke access anyone currently has. In-flight mandates registered before this
+-- deploy also still hold the OLD `start_date` semantics (today+trialDays), and
+-- `MandateService` keeps `next_debit_date ?? start_date` as the fallback for
+-- exactly that window.
+--
+-- The list of hand-written objects a future `prisma migrate dev` will try to
+-- drop is UNCHANGED at nine by this file — it adds no CHECK constraints. See
+-- the reviewer banner in 20260730120000_add_pdn_and_provider_logs.
+
+ALTER TABLE "mandates" ADD COLUMN "trial_ends_at" TIMESTAMPTZ(6);

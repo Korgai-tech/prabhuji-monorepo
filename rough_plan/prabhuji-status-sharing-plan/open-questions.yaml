@@ -1,0 +1,70 @@
+open_questions:
+  - id: q1
+    question: What is the exact backend API contract for saving personal and business status profiles?
+    owner: Engineering
+    priority: medium
+    current_decision: Details are stored in backend and active profile type controls the overlay.
+    recommendation: Use one user_status_profile resource with active_profile_type, personal fields, business fields, avatar_image_url, and updated_at.
+    blocker: false
+
+  - id: q2
+    question: Should final image/video rendering happen fully on-device, backend-side, or hybrid?
+    owner: Engineering
+    priority: medium
+    current_decision: The app must pre-generate the final file before opening the native Android share sheet.
+    recommendation: Use on-device rendering for images; evaluate video rendering performance on low-end Android before deciding local versus backend.
+    blocker: false
+
+  - id: q3
+    question: What are the max duration, max file size, resolution, and codec rules for video status export?
+    owner: Engineering
+    priority: medium
+    current_decision: Video output is generated before share and uses a shareable video file.
+    recommendation: Prefer 9:16 MP4 H.264, optimized for WhatsApp sharing, with engineering-defined size limits.
+    blocker: false
+
+  - id: q4
+    question: Should Phase 1 target WhatsApp Status specifically if Android exposes it, or only rely on the general share sheet?
+    owner: Engineering
+    priority: medium
+    current_decision: Use native Android share sheet and let users choose WhatsApp or other installed apps.
+    recommendation: Do not add direct WhatsApp Status deep-link in Phase 1; revisit in Phase 2 after reliability testing.
+    blocker: false
+
+  - id: q5
+    question: Is displayed view count CMS-provided only, or should app views update the visible count in real time?
+    owner: Analytics
+    priority: medium
+    current_decision: Figma shows view count and analytics should log card views.
+    recommendation: Display CMS/backend count in Phase 1 and log status_card_viewed after a 2-second visibility threshold.
+    blocker: false
+
+  - id: q6
+    question: What exact character limits should be enforced for name, business name, and business details?
+    owner: Product
+    priority: medium
+    current_decision: Text must fit the fixed Phase 1 overlay.
+    recommendation: Start with 40 characters for personal name, 50 for business name, and 80 for business details unless design adjusts.
+    blocker: false
+
+  - id: q7
+    question: Do users need a reset or delete option for saved status details?
+    owner: Product
+    priority: low
+    current_decision: Users can update and overwrite saved details.
+    recommendation: Treat explicit reset/delete as Phase 2 unless required by account settings policy.
+    blocker: false
+
+phase_2_items:
+  - Tap-to-unmute or visible sound controls for video statuses.
+  - Different overlay templates for future status designs.
+  - Advanced overlay editor with draggable placement.
+  - More frames and overlay templates.
+  - Saved or favorite statuses collection.
+  - Search inside Status.
+  - Personalized deity feed.
+  - Personalized language feed.
+  - Direct WhatsApp Status deep-link if technically reliable.
+  - Video rendering queue or progress for heavy videos.
+  - Watermark or branding controls.
+  - Camera capture for avatar/profile image.

@@ -1,0 +1,20 @@
+-- TAM-160: the once-only guard for `bk_first_utm_source_success`.
+--
+-- Attribution data itself is NOT stored in this database. The campaign is read
+-- live from the shared platform's referral service at
+-- `<events origin>/referral/v1/<user_id>/latest`, at each of the four UTM
+-- moments. That route returns ONE row (the user's newest touch) and carries no
+-- id for their oldest, so it cannot answer "is this the first campaign we have
+-- ever seen for this user?" — which is exactly what the `first` event claims.
+-- This column answers it, and holds nothing else.
+--
+-- Additive and nullable, so it is safe on a live table: no default to backfill,
+-- no rewrite, no lock beyond the catalog update. NULL means "never reported",
+-- which is the correct reading for every existing row — the events did not
+-- exist, so none of them has been reported.
+--
+-- Deliberately NOT indexed: the only read is by primary key, alongside the rest
+-- of the user row that the verify path has already loaded.
+--
+-- `"User"` is quoted because the table really is capitalised.
+ALTER TABLE "User" ADD COLUMN "first_utm_reported_at" TIMESTAMP(3);

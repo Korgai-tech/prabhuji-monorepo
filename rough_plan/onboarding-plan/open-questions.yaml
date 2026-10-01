@@ -1,0 +1,73 @@
+open_questions:
+  - id: "q1"
+    question: "What is the final Phase 1 language list?"
+    owner: "Product / Design / Content"
+    priority: "medium"
+    current_decision: "Use the 8 languages visible in Figma for Phase 1: Hindi, Marathi, Gujarati, Bengali, Odia, Tamil, Telugu, Kannada."
+    recommendation: "Keep these 8 languages for MVP unless localization or content readiness requires removal."
+    blocker: false
+
+  - id: "q2"
+    question: "What exact OTP length, resend timer, retry limit, temporary block duration, and OTP expiry should be used?"
+    owner: "Engineering"
+    priority: "high"
+    current_decision: "RESOLVED 2026-07-11. OTP length = 4 digits; resend timer = 20 seconds; retry limit = 5 attempts; temporary block duration = 10 minutes; OTP expiry = 15 minutes."
+    recommendation: "Values encoded in TAM-43 (backend) + TAM-51 (mobile). Backend response payload still drives the mobile UI so changes remain configurable."
+    blocker: false
+    resolved: true
+
+  - id: "q3"
+    question: "Which payment provider and compliance path will Phase 1 use?"
+    owner: "Engineering / Product"
+    priority: "high"
+    current_decision: "RESOLVED 2026-07-11. No payment provider available for Phase 1. Pay Now shows a placeholder toast and routes to Home; user stays free. All other paywall / subscription functionality (config, plans display, subscription-status endpoint, analytics events) is still built so we're ready to plug a provider in later."
+    recommendation: "TAM-47 pivots to subscription-state schema + status endpoint only; TAM-54 pivots to toast + navigate. Full Razorpay integration deferred until a provider is chosen."
+    blocker: false
+    resolved: true
+
+  - id: "q4"
+    question: "What are the production URLs for Privacy Policy, Terms of Service, and Refund Policy?"
+    owner: "Product / Legal / Support"
+    priority: "high"
+    current_decision: "RESOLVED 2026-07-11. Ship with dummy URLs stored in the mobile env file (compile-time defines) — user will replace with production URLs later. No code change required to swap them, just the env value."
+    recommendation: "Wire PRIVACY_POLICY_URL / TERMS_OF_SERVICE_URL / REFUND_POLICY_URL as `--dart-define` env vars in `apps/mobile/lib/core/env.dart`. TAM-50 + TAM-53 consume them. Placeholder value: `https://prabhuji.example.com/{privacy|terms|refund}`."
+    blocker: false
+    resolved: true
+
+  - id: "q5"
+    question: "Should the free-user app-open paywall remain unlimited after launch, or should frequency rules be added later?"
+    owner: "Product"
+    priority: "medium"
+    current_decision: "Show paywall on every app open for free users."
+    recommendation: "Track paywall_impression_count_for_user, close rate, and conversion. Consider frequency cap in Phase 2 if fatigue is high."
+    blocker: false
+
+  - id: "q6"
+    question: "Should social login icons from the Figma raw structure be removed or hidden for Phase 1?"
+    owner: "Product / Design"
+    priority: "medium"
+    current_decision: "Phone login only is confirmed for MVP. Social login is not specified as Phase 1 behavior."
+    recommendation: "Hide or disable social login icons unless they are intentionally added to scope."
+    blocker: false
+
+  - id: "q7"
+    question: "Should the paywall payment method selector be interactive in Phase 1?"
+    owner: "Engineering / Product"
+    priority: "medium"
+    current_decision: "Figma shows a Pay Using area with GPay UPI, but payment provider is not final."
+    recommendation: "Make selector interactive only if the chosen provider supports method selection inside app; otherwise show selected/default method from provider."
+    blocker: false
+
+phase_2_items:
+  - "Guest mode or explore-first onboarding variant."
+  - "Frequency capping for repeated free-user app-open paywall."
+  - "Smart paywall timing based on devotional content intent and user behavior."
+  - "A/B testing for paywall video, benefits order, trial copy, pricing layout, and shimmer CTA."
+  - "Additional languages based on localization and content readiness."
+  - "More advanced localization QA dashboard for missing fields per language."
+  - "Edit name and language from profile/settings if not covered elsewhere."
+  - "Restore subscription self-serve screen."
+  - "Referral or family plan experiments."
+  - "Personalized paywall benefits based on most-used modules."
+  - "Offline/cached paywall video thumbnail improvements."
+  - "Contextual paywalls for specific premium actions after MVP unified/paywall behavior is stable."

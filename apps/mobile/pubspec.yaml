@@ -1,0 +1,592 @@
+name: mobile
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.2.2+23
+
+environment:
+  sdk: ^3.12.2
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+  # TAM-160 v4 (carousel) — dedicated 3D coverflow package. Chosen over
+  # a custom PageView + Matrix4 implementation because the Figma effect
+  # (5 tiles visible with proper skew + perspective + stacking) is what
+  # this package is purpose-built for. Zero third-party dependencies,
+  # BSD-3 licensed. Supersedes FLAG C's earlier "no package" decision
+  # in favor of Figma fidelity.
+  coverflow_carousel: ^2.1.0
+  flutter_riverpod: ^3.3.2
+  flutter_bloc: ^9.0.0
+  bloc: ^9.0.0
+  equatable: ^2.0.5
+  get_it: ^7.7.0
+  shared_preferences: ^2.3.0
+  dio: ^5.10.0
+  go_router: ^17.3.0
+  flutter_secure_storage: ^10.3.1
+  collection: ^1.19.1
+  http: ^1.5.0
+  intl: ^0.20.2
+  meta: ^1.16.0
+  # In-repo Amplitude-shape SDK: SQLite-backed offline queue, session
+  # lifecycle, HTTP transport speaking Amplitude V2 to apps/events. Replaces
+  # amplitude_flutter — same façade (Amplitude.track / .identify / .setUserId
+  # / .setGroup / .reset), no Amplitude cloud dependency.
+  custom_analytics_flutter:
+    path: custom_event_tracker
+  # In-repo Android plugin: app permission / channel / Do Not Disturb state
+  # for `notification_received.suppressed_reason`. A real plugin (not a
+  # MainActivity channel) so it also registers in the FCM background engine.
+  notification_state:
+    path: notification_state
+  # Fourth analytics sink alongside the in-repo tracker + Firebase + Meta:
+  # the ORIGINAL Amplitude Flutter SDK (cloud). Every event `Analytics.trackEvent`
+  # fires is ALSO forwarded to Amplitude's cloud (api.amplitude.com) so
+  # marketing/growth can use Amplitude's UI on top of our own warehouse pipe.
+  # Class names collide with `custom_analytics_flutter` (same shape), so this
+  # package is always imported with a prefix — see `lib/core/analytics.dart`.
+  # The API key lives in the gitignored `env/prabhujiSecrets.json`
+  # (`amplitudeApiKey`); missing / placeholder → sink is skipped, no cloud
+  # traffic.
+  amplitude_flutter: ^4.0.0
+  # Onboarding auto-fill (TAM-123): Google Phone Number Hint API +
+  # Play services SMS Retriever. Android-only; the plugin no-ops on iOS.
+  # No SMS permissions are added to the manifest — the Retriever API matches
+  # SMSes by our own 11-char app-signature hash, permission-less by design.
+  smart_auth: ^3.2.0
+  url_launcher: ^6.3.0
+  # media_kit — libmpv + bundled FFmpeg. Now the ONLY video engine in the app
+  # (replaces `video_player`, which is out of the dependency graph). Used by
+  # the Status feed, the horoscope result backdrop, the wallpaper live-preview
+  # reels, and the paywall hero. Xiaomi/MIUI (and other) hardware decoders
+  # produce corrupt frames (green diagonal tearing, blocky artifacts) on
+  # high-profile H.264 / HEVC — media_kit's software decode path bypasses the
+  # broken silicon, so any CMS/user-uploaded source is safe.
+  # Cost: ~15–25 MB APK bloat per ABI from the bundled libmpv/FFmpeg. Requires
+  # `MediaKit.ensureInitialized()` in main() before runApp.
+  media_kit: ^1.2.0
+  # 2.x is required — the 1.3.x `media_kit_libs_android_video` fails to
+  # compile against AGP 9 because its android/build.gradle doesn't hand the
+  # Android SDK classpath to the Java sources, so android.util.Log /
+  # android.content.Context / android.net.Uri all fail to resolve. 2.x
+  # ships the fix.
+  media_kit_video: ^2.0.0
+  media_kit_libs_video: ^1.0.7
+  shimmer: ^3.0.0
+  package_info_plus: ^8.0.0
+  # Analytics common properties (Sheet 2): device_model + os_version enrich
+  # every event. Used only from lib/core/analytics_enricher.dart.
+  device_info_plus: ^11.0.0
+  # Figma extraction (TAM-49..53): flutter_svg renders the exported SVG pieces,
+  # google_fonts loads Libre Caslon Text (wordmark) + Inter (body) per Figma tokens.
+  flutter_svg: ^2.0.10+1
+  google_fonts: ^6.2.1
+  cached_network_image: ^3.4.1
+  share_plus: ^12.0.2
+  flutter_cache_manager: ^3.4.1
+  # Shared audio engine (TAM-59). just_audio drives all in-app playback
+  # (mini-player + full player + preview) behind the AudioEngine interface.
+  # audio_service (Android background/lockscreen) is deliberately NOT added in
+  # Phase 1 — see the ticket #PATH_DECISION; it slots in behind the same
+  # interface later without touching consumers.
+  just_audio: ^0.10.6
+  # Horoscope section narration (TAM-74). The device's system TTS engine reads
+  # each result step aloud. Sits behind the `TtsPort` seam
+  # (lib/features/horoscope/data/tts_port.dart) so the bloc is unit-testable with
+  # a fake and narration can never block the text (PRD §6.6/§7).
+  flutter_tts: ^4.2.0
+  # Native Android set-as-phone-ringtone (TAM-68): permission_handler drives the
+  # WRITE_SETTINGS special-permission flow (Settings.ACTION_MANAGE_WRITE_SETTINGS
+  # deep-link + re-check on resume). The actual RingtoneManager set runs through
+  # the `prabhuji/ringtone` platform channel (Kotlin), not this package.
+  permission_handler: ^11.3.1
+  visibility_detector: ^0.4.0+2
+  # In-app WebView for legal pages (privacy policy, terms of service). Opened
+  # from onboarding TermsRow + the Profile & Settings screen; hosts the URL
+  # under an AppBar with a back button so the user stays inside the app.
+  webview_flutter: ^4.10.0
+  # Razorpay UPI Autopay checkout — official Flutter plugin (verified pub.dev
+  # publisher). Consumed only by `lib/features/paywall/data/razorpay_sdk_gateway.dart`;
+  # activated when the mandate API returns `provider: "razorpay"` with a
+  # `razorpay: {keyId, orderId, customerId?, recurring}` payload. Contract:
+  # `docs/PAYMENT-MANDATE-API-CONTRACT.md`.
+  razorpay_flutter: ^1.4.5
+  # Debug-only HTTP inspector — intercepts every Dio call and shows a
+  # floating notification chip that opens the request/response inspector.
+  # Gated by kDebugMode + showOnRelease=false everywhere it's touched, so
+  # release builds tree-shake the UI paths (the dep is still in the graph).
+  chucker_flutter: ^1.8.5
+  # Status Sharing avatar upload (TAM-71 finding #1). Opens the Android photo
+  # picker; the picked bytes are streamed to the presigned S3 URL minted by
+  # POST /status/profile/avatar/presign. See lib/features/status/data/status_avatar_picker.dart.
+  image_picker: ^1.1.2
+  # Status Sharing video overlay burn-in (TAM-71 finding #2). Runs the
+  # bundled FFmpeg binary to composite the overlay band + avatar + text onto
+  # the source video and mux to H.264 mp4. Community-maintained fork of the
+  # archived arthenica/ffmpeg-kit. Adds ~30 MB to the APK — accepted tradeoff
+  # per the PRD's "no un-burned video shared" rule.
+  ffmpeg_kit_flutter_new: ^3.2.0
+  # Downloads the source video (from CMS S3) to a local temp path so FFmpeg
+  # can read it as `-i <local>`. dio is already used elsewhere but a fresh
+  # http client keeps the download loop out of the app's auth interceptor.
+  path_provider: ^2.1.4
+  # Firebase Cloud Messaging (Android-only for now — iOS deferred until
+  # GoogleService-Info.plist is added). The token is registered against the
+  # server on app open (once authenticated) + on onTokenRefresh, and deleted
+  # both server-side and via `FirebaseMessaging.instance.deleteToken()` at
+  # logout. See `lib/core/firebase_token_sync.dart`.
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.1.3
+  # Crash reporting. Pinned to the 4.x line because it pairs with
+  # firebase_core 3.x (5.x needs core 4.x). The ONLY importer is
+  # `lib/core/services/crashlytics_service.dart`; native side needs the
+  # `com.google.firebase.crashlytics` Gradle plugin (android/app/build.gradle.kts).
+  firebase_crashlytics: ^4.3.10
+  # Dual-sink analytics (this session): every event `Analytics.trackEvent` fires
+  # also lands in Firebase / GA4 alongside our own Amplitude → ClickHouse pipe.
+  # See `lib/core/analytics.dart` for the forwarding rules (event names, user
+  # properties, workspace group). Requires Firebase.initializeApp() to run
+  # BEFORE Analytics.init in main.dart.
+  firebase_analytics: ^11.3.3
+  # Third analytics sink alongside Amplitude + Firebase: Meta (Facebook)
+  # App Events. Keys (App ID + Client Token) live in the gitignored
+  # `env/prabhujiSecrets.json` — plugin is initialised lazily in
+  # `Analytics.init` only when both secrets are real (non-placeholder), so
+  # placeholder builds simply skip Meta. Native config in AndroidManifest
+  # is documented but LEFT AS PLACEHOLDER until real keys land.
+  facebook_app_events: ^0.20.1
+  # Microsoft Clarity session-replay. Owned by lib/core/services/clarity_service.dart
+  # (the ONLY file that imports package:clarity_flutter — feature code calls the
+  # seam). Pinned exact per the flutter-clarity skill so the ClarityConfig /
+  # Clarity static API surface used by the seam stays stable.
+  clarity_flutter: 1.4.3
+  # Renders heads-up notifications when a push arrives while the app is in the
+  # foreground (FCM only auto-displays in the tray when the app is backgrounded
+  # or terminated). Also drives the notification channel + icon setup.
+  #
+  # Pinned to ^22.0 because the repo builds against AGP 9.0.1 — the 18.x line
+  # was authored before the AGP-9 "built-in Kotlin plugin" migration and fails
+  # to compile against it (Android SDK classpath is missing from the plugin's
+  # Java sources). 22.x is the first major version with AGP-9 support.
+  flutter_local_notifications: ^22.1.0
+  # Deep linking (TAM-124). app_links surfaces cold-start + warm-resume URIs
+  # from both the prabhuji:// custom scheme (internal: push, adb, in-app) and
+  # the https://krutyug.ai/app/* Android App Links (external shares). The URI
+  # is parsed by lib/core/deep_link_parser.dart into a typed target, held in
+  # lib/core/pending_intent_store.dart across the paywall interstitial +
+  # onboarding replay, and dispatched by lib/core/deep_link_service.dart.
+  app_links: ^7.2.1
+  # Android Play Install Referrer (TAM-124). Read on first launch to recover
+  # the ?referrer= appended by the krutyug.ai landing page — that's how a
+  # user who taps a share link without the app installed still lands on the
+  # shared content after they install from Play Store. Android-only by design;
+  # iOS deferred DL is out of v1 scope.
+  android_play_install_referrer: ^0.4.0
+  # Google Advertising ID (Android GAID) / IDFA (iOS) — mirrors the pattern in
+  # krutyug_flutter_app so events land in the warehouse with the same `adid`
+  # column both apps do. Resolved once at `Analytics.init` via
+  # `AdvertisingIdService`, cached in SharedPreferences + memory, then threaded
+  # onto every `BaseEvent` / `Identify` as the typed top-level `adid` field
+  # (see custom_event_tracker/lib/http_network_service.dart). Android needs
+  # `com.google.android.gms.permission.AD_ID` in the manifest for Android 13+;
+  # iOS needs `NSUserTrackingUsageDescription` + an ATT prompt gated behind
+  # `app_tracking_transparency` — otherwise the API returns the all-zero ID
+  # (`00000000-0000-0000-0000-000000000000`) which we treat as null.
+  advertising_id: ^2.7.1
+  app_tracking_transparency: ^2.0.6+1
+  # Downloads (TAM-125) — network connectivity detection for the offline
+  # banner + streaming-content hiding in the Downloads library. Debounced
+  # in `application/offline_watcher.dart` so a wifi/cellular handoff
+  # doesn't flicker the banner or double-fire `app_offline_mode_entered`.
+  connectivity_plus: ^7.3.1
+  # Downloads (TAM-125) — AES-256-GCM streaming API for the encrypted
+  # on-device audio store. Master key persisted in flutter_secure_storage
+  # (Android EncryptedSharedPreferences / iOS Keychain); per-file 12-byte
+  # nonce (`Random.secure()`). Never a plaintext temp file — the download
+  # loop writes ciphertext straight to disk, and playback decrypts in
+  # 64 KB chunks through `EncryptedStore.decryptStream(...)` into a
+  # `just_audio` `StreamAudioSource`.
+  cryptography: ^2.7.0
+  # Client-side voice-input for the chat composer (TAM-166 §18.3). Uses the
+  # device-native recognizer — Apple SFSpeechRecognizer on iOS, Google's on-
+  # device recognizer on Android — locale locked to `hi-IN`. Live partial
+  # results stream to the composer; on stop, the final transcript is sent as
+  # a plain text message through the existing POST /chat/messages flow (no
+  # audio upload, no server transcription — PRD §7 deviation locked with the
+  # user 2026-09-03). Owned by `features/chat/presentation/widgets/
+  # voice_input_controller.dart`, which is the only file that imports the
+  # SDK — widget tests inject a fake VoiceInputController and never hit the
+  # real recognizer.
+  speech_to_text: ^7.4.0
+  # Client-minted UUID for the `voice_note_id` field on chat_message_sent so
+  # the §18.3 voice events group correctly against the send. Also promotes
+  # what was already a transitive dep of the flutter_bloc / clarity_flutter
+  # tree into a direct import so `package:uuid` is stable in our code.
+  uuid: ^4.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^6.0.0
+  integration_test:
+    sdk: flutter
+  # Generates launcher icons for Android/iOS from a single source PNG.
+  # Config lives in the `flutter_launcher_icons:` block near the bottom of
+  # this file. Regenerate with `dart run flutter_launcher_icons` after any
+  # source-icon change.
+  flutter_launcher_icons: ^0.14.4
+
+# Local override to unblock AGP 9 builds — permission_handler ^11.3.1 resolves
+# permission_handler_android 12.1.0, which fails to compile against AGP 9's
+# Android SDK classpath. 13.0.1 has AGP 9 support.
+dependency_overrides:
+  permission_handler_android: ^13.0.0
+  # Vendored 2.0.1 + one Android patch: release video surfaces when the plugin
+  # detaches from its engine (the "FlutterJNI is not attached to native" crash).
+  # Details and upgrade steps: third_party/README.md.
+  media_kit_video:
+    path: third_party/media_kit_video
+
+# App-icon generator config (consumed by `dart run flutter_launcher_icons`).
+# Source PNG is 1024×1024, composed off-repo from BrandLogo's SVG layers.
+# `adaptive_icon_foreground` is the transparent-bg variant so Android's
+# adaptive icons can composite it on `adaptive_icon_background`.
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/launcher/icon.png"
+  adaptive_icon_background: "#FFF1E2"
+  adaptive_icon_foreground: "assets/launcher/icon_foreground.png"
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
+
+  # Figma-extracted assets (TAM-49..53). SVG pieces from the Dev Mode server;
+  # composed via flutter_svg. See lib/features/onboarding/splash/presentation/
+  # brand_logo.dart for the Logo composite recipe.
+  assets:
+    # Per-env runtime config — loaded by `lib/core/app_config.dart` at cold
+    # start based on `--dart-define=ENV=staging|preprod|prod` (default:
+    # staging). Contains the API + events collector URLs, the events collector
+    # API key, and the three legal-page URLs. Local dev: edit `staging.json`
+    # on your machine to point at localhost / 10.0.2.2 and DO NOT commit it.
+    - env/
+    - assets/logo/
+    - assets/onboarding/
+    - assets/paywall/
+    # Player-control glyphs exported from Figma nodes 423:4384 / 423:4383 /
+    # 423:4382 (play, pause, skip-next, skip-prev) + the design-system close
+    # cross. Used by the MiniPlayer (TAM-59) and the full player (TAM-64).
+    - assets/audio/
+    # Bottom-nav glyphs (TAM-60) exported from Figma nav node 750:6252 via
+    # tools/figma-export.ts. Home/Mandir carry their own colours; Status/
+    # Horoscope/Books are monochrome and tinted at the call site. Provenance:
+    # tools/figma-assets.manifest.json.
+    - assets/nav/
+    # Deity-filter "All Gods" Om glyph (TAM-60), Figma node 750:4997. Real deity
+    # avatars are CMS network images (no Figma asset).
+    - assets/deity/
+    # Aarti & Bhajans player + control glyphs (TAM-64) exported from Figma nodes
+    # 412:2658 (back arrow), 423:4317/4326 (rewind/forward-10), 423:4306/4311
+    # (skip prev/next), 423:4376/4283 (play/pause), 425:4859/4863 (like/share) via
+    # tools/figma-export.ts. All monochrome → tinted at the call site. Provenance:
+    # tools/figma-assets.manifest.json. Cover/category/deity art are CMS network
+    # images (AppNetworkImage) — no Figma asset.
+    - assets/aarti/
+    # Mantras & Stutis player + counter-sheet glyphs (TAM-66) exported from Figma
+    # nodes 438:3074 (player: back-arrow, like, share, prev/next/play/pause,
+    # counter-repeat pill icon) and 1054:4130 (counter sheet: radio-selected /
+    # radio-unselected) via tools/figma-export.ts. Provenance:
+    # tools/figma-assets.manifest.json. Artwork/deity/category art are CMS network
+    # images (AppNetworkImage) — no Figma asset.
+    - assets/mantras/
+    # Ringtone module glyphs (TAM-68) exported from Figma nodes: back arrow
+    # (I683:4816;5186:10373;5183:8406), search (670:4613), card/preview play
+    # (I676:4711;676:4767), preview pause (I683:4814;423:4283), play-count
+    # headphones (683:4901), set-count ringtone bell (683:4898), like (683:4797),
+    # share (683:4801), and the Set-Ringtone CTA glyph (I683:4904;5166:6232) via
+    # tools/figma-export.ts. All monochrome → tinted at the call site. Provenance:
+    # tools/figma-assets.manifest.json. Thumbnail/preview art are CMS network
+    # images (AppNetworkImage) — no Figma asset.
+    - assets/ringtone/
+    # Wallpaper module glyphs (TAM-70) exported from Figma nodes: back arrow
+    # (I704:5786;5186:10373;5183:8406), engagement-rail like (282:2835) +
+    # WhatsApp/share (282:2843), and the LIVE-badge broadcast glyph
+    # (I712:6808;712:6716) via tools/figma-export.ts. All monochrome → tinted at
+    # the call site (the LIVE badge's translucent-white pill chrome + "LIVE" text
+    # are token/geometry, not raster — the Figma pill is #FFFFFF @10%). Provenance:
+    # tools/figma-assets.manifest.json. Wallpaper thumbnails/preview stills are CMS
+    # network images (AppNetworkImage) — no Figma asset.
+    - assets/wallpaper/
+    # Status module glyphs (TAM-72) exported from Figma nodes: Edit-Details
+    # pencil (I302:4928;5186:10469;5183:8514), engagement Share/WhatsApp
+    # (I330:6125;322:1724;5178:7451), like (I330:6125;322:1726), view/eye
+    # (I330:6125;322:1730), overlay avatar user-01 (I330:6125;322:1771) +
+    # plus-circle badge (I330:6125;322:1773), details back arrow
+    # (I371:2371;5186:10373;5177:7196) and the avatar camera badge
+    # (I371:3556;371:3550) via tools/figma-export.ts.
+    #
+    # overlay_template_bg.png is the FIXED overlay template's art — an IMAGE
+    # FILL on node I330:6125;322:1743 (ref 7678fa5a…), so it is not a renderable
+    # node: it was downloaded from Figma's documented image-fills endpoint
+    # (GET /v1/files/{key}/images), since figma-export.ts only renders nodes.
+    # Still 100% Figma-sourced per the TAM-56 STRICT gate.
+    #
+    # avatar_person/plus_circle/edit_pencil/camera carry their own design
+    # colours and render UNTINTED; share/like/view are monochrome → tinted at
+    # the call site. Provenance: tools/figma-assets.manifest.json. Status media
+    # + user avatars are CMS/network images (AppNetworkImage) — no Figma asset.
+    - assets/status/
+    # Horoscope module art (TAM-74) exported from Figma via tools/figma-export.ts.
+    #
+    # zodiac_<sign>.svg — the 12 zodiac glyphs, from the "Zodiac Icons" section
+    # (379:2409) masters: aries 379:2347 … pisces 379:2399. All monochrome
+    # (#FE8A02 in the file) → tinted at the call site, because the SAME glyph
+    # renders orange on the grid card and cream (#FFE4C5) in the result header
+    # pill. Keyed by the contract's closed `zodiacId` enum (12 fixed signs), NOT
+    # by the API's `iconAssetUrl` — that field is a placehold.co PLACEHOLDER in
+    # the seed, so rendering it would ship non-design art and break the TAM-56
+    # STRICT gate. See TOKENS.md.
+    #
+    # tts_volume.svg / tts_muted.svg — the TTS control's two states, from the
+    # `TTS` COMPONENT_SET (1173:4508): `Property 1=volume` (1173:4507) and
+    # `Property 1=muted` (1173:4506). Monochrome white → tinted at the call site.
+    #
+    # back_arrow.svg — result-header back arrow (I387:2491;5186:10373;5177:7196).
+    #
+    # result_card_frame.svg — the decorative result-card border + bottom
+    # flourish/sparkle (1162:4407). Fetched with &svg_outline_text=false and the
+    # design's MOCK copy (its one <text> child) removed, so the app renders the
+    # live API step text inside Figma's own 27 art paths. See the manifest note.
+    #
+    # video_fallback.jpg — the static backdrop behind the result when the video
+    # can't play (node 387:2572 @2x). LAST-RESORT only: the contract's
+    # media.backgroundStaticFallbackUrl (CMS) is tried first.
+    #
+    # Provenance for all of the above: tools/figma-assets.manifest.json.
+    - assets/horoscope/
+    # Books & Scriptures module art (TAM-76) exported from Figma via
+    # tools/figma-export.ts. Provenance: tools/figma-assets.manifest.json;
+    # full token/geometry table: lib/features/books/TOKENS.md.
+    #
+    # Monochrome SVG glyphs — tinted at the call site, never used with their
+    # exported fill: back-arrow (I620:3917;5186:10373;5183:8406), font-settings
+    # (I620:3917;5186:10379;5177:7196), chapters-list
+    # (I620:3917;5186:10380;5177:7196), listen-play/listen-pause
+    # (I663:7474;663:4269;5178:7451 / I663:4274;5178:7451), skip-backward/
+    # skip-forward (I663:4248;5178:7451 / I663:4298;5178:7451) and text-size
+    # (634:4097).
+    #
+    # Raster art: the four Browse-Categories thumbnails (534:5114/5118/5122/
+    # 5126) at their designed 15° rotation, the book-cover paper texture
+    # (I534:5505;534:5226) and the drawer-header texture (637:4418).
+    #
+    # IMPORTANT — the two textures are BLEND layers in Figma (cover texture =
+    # MULTIPLY, drawer header = OVERLAY @0.30). An isolated Figma render cannot
+    # bake a blend mode in, so both are composited at the call site with
+    # `BlendLayer` (lib/shared/widgets/blend_layer.dart); wiring them as plain
+    # images would hide the artwork beneath. The book-cover "Lights" gloss is
+    # NOT bundled for the same reason — its OVERLAY/SOFT_LIGHT gradients flatten
+    # to opaque white when rendered alone, so it lives in AppGradient
+    # (bookCoverSpine/bookCoverLight) built from the node's own stops.
+    #
+    # Book covers themselves are CMS network images (AppNetworkImage) — no Figma
+    # asset.
+    - assets/books/
+    # Home (TAM-62) — exported from the Figma frame 285:3464 via
+    # tools/figma-export.ts. Provenance: tools/figma-assets.manifest.json.
+    #
+    # SVG glyphs, all monochrome → tinted at the call site with
+    # ColorFilter.mode(..., srcIn), never their exported fill: help (285:3495),
+    # badge-flame (285:3552, shared by the Trending + Suggested pills),
+    # engagement-like/view/share (285:3562/3567/3571), preview-play (285:3671).
+    # logo-mark (285:3485) is the ONE exception — it is 2-tone (#FE7B00 body +
+    # white knockout), so a srcIn tint would erase the knockout: it renders
+    # untinted, exactly like the nav's 2-tone Home badge.
+    #
+    # Raster @4x: shortcut-aarti/mantras/ringtone/wallpaper (the four
+    # feature-card artworks, nodes I767:6580|6643|6658|6666;767:6576;*) and
+    # module-thumb-wallpaper/status/aarti/mantra/ringtone (the 40px tile in each
+    # feed card's header row, nodes 285:3545/3580/3645/3695/3745). Multicolour
+    # gold artwork → exported PNG and rendered as-is.
+    #
+    # Banner media, feed hero media and the user's avatar are CMS network images
+    # (AppNetworkImage) — no Figma asset. The audio preview's PAUSE glyph has no
+    # node in this frame; it reuses the Figma-exported assets/audio/pause.svg
+    # (node 423:4383, TAM-59) tinted white — see features/home/TOKENS.md.
+    - assets/home/
+    # Support screen (TAM-N-support-screen) — Figma frame 1939:20185.
+    #  * whatsapp.svg — WhatsApp glyph exported from node 1939:20199 (24×24
+    #    white, tinted at the call site). Fetched via the Figma REST /images
+    #    endpoint — the composite id `I…;44:10`-style trap does not apply
+    #    here (the glyph is a plain child, not an instance nested id).
+    #  * clock.png   — Availability-row clock glyph. The composite children
+    #    of the clock frame (1939:20204/20205) return `null` from
+    #    /v1/images (documented Figma limitation for group children), and
+    #    the containing frame `1939:20202` returned `null` too — so the
+    #    frame is exported as PNG @4x (12×12 dp) instead. Renders in the
+    #    design's orange (#FC7304) already; NO ColorFilter tint at the
+    #    call site. Provenance: pubspec note only (no manifest entry yet).
+    - assets/support/
+    # Downloads module (TAM-125) — Figma-exported glyphs for the play-page
+    # Download button (idle / progress-ring frames / downloaded check),
+    # the row ⋮ menu, the offline banner icon, the empty-state Downloads
+    # avatar, the disclosure-card lock/shield, and the Downloads
+    # bottom-nav glyph (active + inactive). Extraction workflow:
+    # figma-flutter skill Phase 5. Missing extractions currently render
+    # via the material fallback — see the sweep-table in
+    # specs/evidence/TAM-125/fidelity/sweep-table.md.
+    - assets/downloads/
+    # Chat module (TAM-164) — Figma frames under section 2612:17646.
+    #
+    #  * nav_chat_active.svg / nav_chat_inactive.svg — bottom-nav Chat tab
+    #    glyph pair (2612:18143) with the NEW badge baked in per Open
+    #    Question #3's safe interim default (permanent-branding shape).
+    #    Untinted (self-coloured orange/grey + orange badge) — do NOT pass
+    #    a ColorFilter or the NEW badge disappears.
+    #  * back_arrow.svg — screen back arrow (2612:17647 header) — 24×24,
+    #    black, tinted at the call site.
+    #  * mic.svg / send.svg — composer (2612:18010) mic and send-arrow
+    #    glyphs; 20×20 white, tinted at the call site (both render on the
+    #    orange circle).
+    #  * chevron_right.svg — content-card CTA arrow (2612:17847 CTA row);
+    #    20×20 orange, tinted at the call site.
+    #  * deity_om_temple.svg — empty-state deity roundel glyph (2612:17647);
+    #    56×56 orange, tinted at the call site.
+    #  * chip_message.svg — empty-state recommended-chip icon (2612:17647);
+    #    generic message glyph; 20×20 orange, tinted at the call site.
+    #
+    # NOTE (Slice 2 execution): the Slice 2 environment did not expose the
+    # Figma MCP tools, so these SVGs are hand-authored approximations that
+    # match the visible geometry in the staged reference PNGs at
+    # specs/evidence/TAM-164/figma/. Slice 3 Phase 6 replaces them with
+    # tools/figma-export.ts output and lands the manifest entry.
+    - assets/chat/
+
+    # TAM-166 kuldevta discovery. `entry_hero.png` is a 640×840 crop of the
+    # designer's entry frame; further Phase 4 assets (progress bar, loading
+    # spinner, reason-card trishul, sun-ray backdrop) land here as they get
+    # exported once the Figma REST/MCP budget resets.
+    - assets/kuldevta/
+
+  # Fonts bundled into the app so `google_fonts` can resolve them offline
+  # (the emulator has no internet; google_fonts.allowRuntimeFetching is off
+  # in main.dart). Weights match the tokens in lib/core/theme.dart.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.otf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.otf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.otf
+          weight: 600
+        # Inter Bold — required by the Books chapters-drawer book title (TAM-76,
+        # Figma node 637:4424 = Inter 700 16/20). Without it, google_fonts
+        # (allowRuntimeFetching:false in tests) throws instead of rendering.
+        # Inter v4.0 extras/otf, same family + format as the weights above.
+        - asset: assets/fonts/Inter-Bold.otf
+          weight: 700
+    - family: Libre Caslon Text
+      fonts:
+        - asset: assets/fonts/LibreCaslonText-Bold.ttf
+          weight: 700
+    # Montserrat SemiBold (weight 600) — required by the v2 mini-player title
+    # (TAM-N-mini-player-v2, Figma node 1950:20915 → Montserrat 12/14.6 w600).
+    # Bundled as a Google Fonts variable TTF (single asset, weight-axis
+    # selectable) rather than a runtime google_fonts fetch: main.dart sets
+    # GoogleFonts.config.allowRuntimeFetching = false, and the tests would
+    # throw with a runtime-fetch path (figma-flutter skill Trap
+    # "google_fonts in tests"). Only weight 600 is registered because that is
+    # the only weight the v2 mini-player uses.
+    - family: Montserrat
+      fonts:
+        - asset: assets/fonts/Montserrat-Variable.ttf
+          weight: 600
+    # Poppins — required by TAM-160 paywall v1 (`card_hero`) design tokens:
+    #   * "Free trial" pill title (Poppins Bold 16)
+    #   * "for 3 days, then ₹299/month" subtitle (Poppins Medium 12)
+    #   * "Cancel Anytime" / "Refund Policy" row (Poppins Regular 12)
+    # Bundled to keep `GoogleFonts.config.allowRuntimeFetching = false` valid.
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/to/resolution-aware-images
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/to/asset-from-package
+
+  # To add custom fonts to your application, add a fonts section here,
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
+  # list giving the asset and other descriptors for the font. For
+  # example:
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
+  #   - family: Trajan Pro
+  #     fonts:
+  #       - asset: fonts/TrajanPro.ttf
+  #       - asset: fonts/TrajanPro_Bold.ttf
+  #         weight: 700
+  #
+  # For details regarding fonts from package dependencies,
+  # see https://flutter.dev/to/font-from-package

@@ -1,0 +1,31 @@
+# Render blueprint for the Kuldevta QA console.
+#
+# Point Render at this repo and set "Blueprint" with a Root Directory of
+# `tools/kuldevta-console`, or create a Web Service by hand with the build and
+# start commands below.
+#
+# There is no build step and no dependency to install: the console is one file
+# on the Python standard library, so `pip install` has nothing to do. That is
+# deliberate — a QA tool that can rot on a transitive dependency is a QA tool
+# that stops working the week you need it.
+services:
+  - type: web
+    name: kuldevta-console
+    runtime: python
+    plan: free
+    rootDir: tools/kuldevta-console
+    buildCommand: "true" # no dependencies — stdlib only
+    startCommand: python3 app.py
+    healthCheckPath: /healthz
+    autoDeploy: false # a QA tool should not redeploy on every api commit
+    envVars:
+      # The api this console talks to. MUST be a stage host — the app refuses
+      # to start against anything matching /prod|production/.
+      - key: API_BASE
+        value: https://stage-prabhuji-api.krutyug.ai
+      # HTTP Basic password (any username). REQUIRED in a hosted deploy: the
+      # console mints a valid stage JWT for whatever phone number is typed,
+      # because stage's stub otp provider accepts 1234 for all of them.
+      # `generateValue` lets Render mint one; read it from the dashboard.
+      - key: CONSOLE_PASSWORD
+        generateValue: true

@@ -1,0 +1,40 @@
+open_questions:
+  - id: "q1"
+    question: "What is the exact mini-player visual/component source for Mantras & Stutis and Aarti & Bhajans?"
+    owner: "Design / Engineering"
+    priority: "medium"
+    current_decision: "Use the shared audio mini-player pattern planned for Aarti & Bhajans."
+    recommendation: "Create or reference one shared mini-player component so both audio modules use the same behavior and UI."
+    blocker: false
+
+  - id: "q2"
+    question: "Should free users who previously had Pro still see their real Recently Played history after Pro expires?"
+    owner: "Product"
+    priority: "low"
+    current_decision: "Show real history if available, but tapping any item triggers the unified paywall when the user is not Pro."
+    recommendation: "Keep history visible as discovery because it can encourage re-subscription without feeling aggressive."
+    blocker: false
+
+  - id: "q3"
+    question: "Should repeat target completion show a small toast or completion message before moving to the next item?"
+    owner: "Design / Product"
+    priority: "low"
+    current_decision: "No overlay or toast in Phase 1; automatically move to the next playlist item."
+    recommendation: "Avoid extra completion UI in Phase 1 to keep chanting flow calm and uninterrupted."
+    blocker: false
+
+phase_2_items:
+  - "Search within Mantras & Stutis."
+  - "Custom repeat count beyond the preset values."
+  - "Sleep timer."
+  - "Offline downloads for Pro users."
+  - "Continue last played mantra section."
+  - "Personalization by preferred deity."
+  - "Daily mantra reminders."
+  - "Language/script options: Hindi, Sanskrit, transliteration."
+  - "Font size adjustment for mantra text."
+  - "Saved/favorite mantra collections."
+  - "Daily chanting milestones or soft devotional progress."
+  - "Smart recommendations based on recently played deity/category."
+  - "Contextual Pro explanation before paywall."
+  - "More advanced audio queue management."

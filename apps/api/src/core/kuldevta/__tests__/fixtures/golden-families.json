@@ -1,0 +1,1162 @@
+[
+  {
+    "name": "Jejuri alias hit — the case retrieval got wrong",
+    "profile": {
+      "surname": "Patil",
+      "surname_raw": "Patil",
+      "community": "Maratha",
+      "community_raw": "Maratha",
+      "community_inferred": null,
+      "gotra": "Kashyap",
+      "gotra_raw": "pata nahi",
+      "gotra_defaulted": true,
+      "ancestral_place": {
+        "village": null,
+        "district": "Satara",
+        "state": "Maharashtra",
+        "raw": "Satara, Maharashtra"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": "hi-Latn",
+      "soft_signals": {
+        "temple_mentioned": "Jejuri wale khandoba",
+        "mandir_photo": "bhandara wale devta",
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "khandoba",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "nothing usable known — a surname was given but no community, gotra, place or temple signal — falls through every tier to the national default (also exercises the ALL region-default entry, since it is the same tier-7 path)",
+    "profile": {
+      "surname": "Sharma",
+      "surname_raw": "Sharma",
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": "Kashyap",
+      "gotra_raw": "Kashyap",
+      "gotra_defaulted": true,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 1
+    },
+    "expectedSlug": "hanuman_ji",
+    "expectedTier": "fallback"
+  },
+  {
+    "name": "region default — Maharashtra with no other signal",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Maharashtra",
+        "raw": "Maharashtra"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "tulja_bhavani",
+    "expectedTier": "fallback"
+  },
+  {
+    "name": "region default — north Karnataka with no other signal",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Karnataka",
+        "raw": "Karnataka"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "renuka_mahur",
+    "expectedTier": "fallback"
+  },
+  {
+    "name": "region default — bare Rajasthan is AMBIGUOUS (RJ-W/RJ-E/RJ-S/RJ-NE all match) so no region default is claimed; falls through to the national fallback rather than silently applying Marwar's nagnechi against its own 'only when Rathore signal is present' caveat",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Rajasthan",
+        "raw": "Rajasthan"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "hanuman_ji",
+    "expectedTier": "fallback"
+  },
+  {
+    "name": "RJ-NE's default deity (jeen_mata) reached via tier-4 community+region, NOT the region-default tier — tier-6 can never select RJ-NE from a bare state (see task-9 report, disagreement 1)",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Agarwal",
+      "community_raw": "Agarwal",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Rajasthan",
+        "raw": "Rajasthan"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "jeen_mata",
+    "expectedTier": "likely"
+  },
+  {
+    "name": "RJ-E's default deity (shakambhari) reached via tier-4 community+region, NOT the region-default tier — tier-6 can never select RJ-E from a bare state (see task-9 report, disagreement 1)",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Chauhan Rajput",
+      "community_raw": "Chauhan Rajput",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Rajasthan",
+        "raw": "Rajasthan"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "shakambhari",
+    "expectedTier": "likely"
+  },
+  {
+    "name": "RJ-S's default deity (ban_mata) reached via tier-4 community+region, NOT the region-default tier — tier-6 can never select RJ-S from a bare state (see task-9 report, disagreement 1)",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Sisodia Rajput",
+      "community_raw": "Sisodia Rajput",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Rajasthan",
+        "raw": "Rajasthan"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "ban_mata",
+    "expectedTier": "likely"
+  },
+  {
+    "name": "bare Ambabai with no place — ambiguous alias, not confirmed",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Ambabai",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "mahalakshmi_kolhapur",
+    "expectedTier": "likely"
+  },
+  {
+    "name": "Ambabai + Kolhapur district resolves to the Kolhapur Mahalakshmi",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": "Kolhapur",
+        "state": "Maharashtra",
+        "raw": "Kolhapur"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Ambabai",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "mahalakshmi_kolhapur",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "Ambabai + Osmanabad/Dharashiv district resolves to Tulja Bhavani",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": "Osmanabad",
+        "state": "Maharashtra",
+        "raw": "Osmanabad"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Ambabai",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "tulja_bhavani",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "Arasuri Ambaji (Gujarat) is its own deity, distinct from Ambabai",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Gujarat",
+        "raw": "Gujarat"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Arasuri Ambaji",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "ambaji",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "community text quotes the inactive deity's own description — must never be returned",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Any family whose kuldevi's name has been lost",
+      "community_raw": "Any family whose kuldevi's name has been lost",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "hanuman_ji",
+    "expectedTier": "fallback"
+  },
+  {
+    "name": "temple named in Devanagari script",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": "mr",
+      "soft_signals": {
+        "temple_mentioned": "तुळजा भवानी",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "tulja_bhavani",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "temple named in Gujarati script",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": "gu",
+      "soft_signals": {
+        "temple_mentioned": "ખોડિયાર માતા",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "khodiyar",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "temple named in mixed Latin + Devanagari script",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": "hi-Latn",
+      "soft_signals": {
+        "temple_mentioned": "Karni Mata करणी माता mandir",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "karni_mata",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "family answered the wrong question (village instead of gotra) — gotra stays null, and the misplaced village still reaches a real deity via place matching",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Maratha",
+      "community_raw": "Maratha",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": "hamare gaon ka naam Satara hai",
+      "gotra_defaulted": true,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Maharashtra",
+        "raw": "Satara, Maharashtra"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "kalubai",
+    "expectedTier": "likely"
+  },
+  {
+    "name": "Agarwal/Marwari (Maheshwari) family resolves to Narayani Devi",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Maheshwari",
+      "community_raw": "Maheshwari Marwari Bania",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": "Jhunjhunu",
+        "state": "Rajasthan",
+        "raw": "Jhunjhunu, Rajasthan"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "narayani_devi",
+    "expectedTier": "likely"
+  },
+  {
+    "name": "medium-confidence deity Kalubai via alias",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Kalubai Mata",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "kalubai",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "medium-confidence deity Randal via alias",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Randal Maa",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "randal",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "medium-confidence deity Ban Mata via alias",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Bayan Mata",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "ban_mata",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "medium-confidence deity Sundha Mata via alias",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Sundhamata",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "sundha_mata",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "medium-confidence deity Kheteshwar via alias",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Khetla Bapji",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "kheteshwar",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "bare varna token \"Brahmin\" alone must not reach the community tier",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Brahmin",
+      "community_raw": "Brahmin",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "hanuman_ji",
+    "expectedTier": "fallback"
+  },
+  {
+    "name": "bare varna token \"Bania\" alone must not reach the community tier",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Bania",
+      "community_raw": "Bania",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "hanuman_ji",
+    "expectedTier": "fallback"
+  },
+  {
+    "name": "confirmed tier — community + gotra + village all agree (Dadhich family, Goth-Manglod)",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Dadhich Brahmin",
+      "community_raw": "Dadhich Brahmin",
+      "community_inferred": null,
+      "gotra": "Dadhich",
+      "gotra_raw": "Dadhich",
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": "Goth-Manglod",
+        "district": "Nagaur",
+        "state": "Rajasthan",
+        "raw": "Goth-Manglod, Nagaur"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "dadhimati",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "possible tier — surname-inferred community plus region (no direct community answer)",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": "Agarwal",
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Rajasthan",
+        "raw": "Rajasthan"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "jeen_mata",
+    "expectedTier": "possible"
+  },
+  {
+    "name": "possible tier — region default with a non-matching inferred community still present",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": "Something Unmatched",
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Gujarat",
+        "raw": "Gujarat"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "ambaji",
+    "expectedTier": "possible"
+  },
+  {
+    "name": "possible tier — Maharashtra region default with a non-matching inferred community present",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": "Unmatched Thing",
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Maharashtra",
+        "raw": "Maharashtra"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "tulja_bhavani",
+    "expectedTier": "possible"
+  },
+  {
+    "name": "fallback tier — a few unrelated answers provided but nothing matches any tier",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": "en",
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 2
+    },
+    "expectedSlug": "hanuman_ji",
+    "expectedTier": "fallback"
+  },
+  {
+    "name": "temple-district compound field matched by whole word (Pabuji, Phalodi / Jodhpur)",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": "Jodhpur",
+        "state": "Rajasthan",
+        "raw": "Jodhpur"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Pabu Maharaj",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "pabuji",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "alias arrives only via the mandir photo caption, not the temple_mentioned field",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": null,
+        "raw": null
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": "Jejuri wale khandoba mandir",
+        "other": []
+      },
+      "answers_provided": 5
+    },
+    "expectedSlug": "khandoba",
+    "expectedTier": "confirmed"
+  },
+  {
+    "name": "Saptashrungi alias hit — a deity not previously covered by the golden set",
+    "expectedSlug": "saptashrungi",
+    "expectedTier": "confirmed",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": "Nashik",
+        "state": "Maharashtra",
+        "raw": "Nashik, Maharashtra"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Saptashrungi Mata",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    }
+  },
+  {
+    "name": "Ekvira alias hit — Koli/Agri family near Karla",
+    "expectedSlug": "ekvira",
+    "expectedTier": "confirmed",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Koli",
+      "community_raw": "Koli",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": "Pune",
+        "state": "Maharashtra",
+        "raw": "Pune, Maharashtra"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Aai Ekvira",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    }
+  },
+  {
+    "name": "Ashapura (Kutch) alias hit — Jadeja Rajput family",
+    "expectedSlug": "ashapura_kutch",
+    "expectedTier": "confirmed",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Jadeja Rajput",
+      "community_raw": "Jadeja Rajput",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": "Kutch",
+        "state": "Gujarat",
+        "raw": "Kutch, Gujarat"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Mata no Madh",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    }
+  },
+  {
+    "name": "Kadva Patidar family in Gujarat resolves to Umiya via community+region",
+    "expectedSlug": "umiya",
+    "expectedTier": "likely",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Kadva Patidar",
+      "community_raw": "Kadva Patidar",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": "Mehsana",
+        "state": "Gujarat",
+        "raw": "Mehsana, Gujarat"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    }
+  },
+  {
+    "name": "Bahuchara alias hit — Becharaji temple",
+    "expectedSlug": "bahuchara",
+    "expectedTier": "confirmed",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": null,
+      "community_raw": null,
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Gujarat",
+        "raw": "Mehsana, Gujarat"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": "Becharaji",
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    }
+  },
+  {
+    "name": "Oswal Jain family in Rajasthan resolves to Sachiya Mata via community+region",
+    "expectedSlug": "sachiya_mata",
+    "expectedTier": "likely",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Oswal",
+      "community_raw": "Oswal",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": "Jodhpur",
+        "state": "Rajasthan",
+        "raw": "Jodhpur, Rajasthan"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    }
+  },
+  {
+    "name": "Kachhwaha Rajput (Jaipur line) family resolves to Jamwai Mata via community+region",
+    "expectedSlug": "jamwai_mata",
+    "expectedTier": "likely",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Kachhwaha Rajput",
+      "community_raw": "Kachhwaha Rajput",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": "Jaipur",
+        "state": "Rajasthan",
+        "raw": "Jaipur, Rajasthan"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    }
+  },
+  {
+    "name": "Chauhan Rajput family in Haryana resolves to Gogaji via community+region (not Shakambhari — Haryana isn't in Shakambhari's states)",
+    "expectedSlug": "gogaji",
+    "expectedTier": "likely",
+    "profile": {
+      "surname": null,
+      "surname_raw": null,
+      "community": "Chauhan Rajput",
+      "community_raw": "Chauhan Rajput",
+      "community_inferred": null,
+      "gotra": null,
+      "gotra_raw": null,
+      "gotra_defaulted": false,
+      "ancestral_place": {
+        "village": null,
+        "district": null,
+        "state": "Haryana",
+        "raw": "Haryana"
+      },
+      "ancestral_place_may_be_current": false,
+      "language": null,
+      "soft_signals": {
+        "temple_mentioned": null,
+        "mandir_photo": null,
+        "other": []
+      },
+      "answers_provided": 5
+    }
+  }
+]

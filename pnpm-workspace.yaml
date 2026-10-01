@@ -1,0 +1,23 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds:
+  '@openapitools/openapi-generator-cli': true
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@swc/core': true
+  cpu-features: true
+  esbuild: true
+  nx: true
+  prisma: true
+  protobufjs: true
+  ssh2: true
+  unrs-resolver: true
+
+# @hyperdx/instrumentation-sentry-node@0.2.0 requires sdk-trace-base/build/src/enums,
+# which 2.9.0 (pulled in by @hyperdx/node-opentelemetry@0.11.0) no longer ships. With two
+# versions in the graph the runtime image resolved either one build to build, and the
+# 2.9.0 build crashed every api task and every billing tick at the telemetry preload
+# (prod, 6 Sep 2026). One version, the one prod ran fine on, until HyperDX catches up.
+overrides:
+  "@opentelemetry/sdk-trace-base": 2.7.1

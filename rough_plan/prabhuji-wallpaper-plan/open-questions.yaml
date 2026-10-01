@@ -1,0 +1,35 @@
+open_questions:
+  - id: q1
+    question: What exact implementation method will Engineering use for live/video wallpapers on Android?
+    owner: Engineering
+    priority: medium
+    current_decision: Store a video preview URL plus an Android-compatible live wallpaper asset/package or rendered video asset, depending on engineering feasibility.
+    recommendation: Choose the simplest Android-compatible method that supports muted looping home-screen live wallpapers across target devices.
+    blocker: false
+  - id: q2
+    question: What Android versions and device types support each wallpaper action in the MVP target matrix?
+    owner: Engineering
+    priority: medium
+    current_decision: Use system-level wallpaper flow where possible and show This device does not support this wallpaper action when unavailable.
+    recommendation: Define a QA device matrix for home screen static, lock screen static, and live wallpaper home screen support.
+    blocker: false
+  - id: q3
+    question: What CMS limits should apply to homepage rows and wallpaper counts for performance?
+    owner: CMS / Engineering
+    priority: medium
+    current_decision: CMS can add, remove, reorder, rename, and configure rows; app hides empty rows.
+    recommendation: Set sensible defaults such as max visible items per row, paginated listings, and image/video size limits.
+    blocker: false
+
+phase_2_items:
+  - Search wallpapers.
+  - Personalized wallpaper rows by preferred deity.
+  - Festival and occasion wallpaper rows.
+  - Daily wallpaper recommendation.
+  - Download or save wallpaper to gallery.
+  - Wallpaper packs.
+  - Advanced live wallpaper effects.
+  - More granular Pro packaging for premium wallpaper collections.
+  - Notifications for new wallpapers.
+  - Contextual Pro explanation before paywall.
+  - Better live wallpaper compatibility checks by device.

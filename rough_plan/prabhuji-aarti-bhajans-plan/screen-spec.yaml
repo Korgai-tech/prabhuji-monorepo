@@ -1,0 +1,724 @@
+design_execution_package:
+  app: "Prabhuji"
+  module: "Aarti & Bhajans"
+  screen_or_flow: "Module Spec"
+  version: "v1.0"
+  status: "approved"
+  package_type: "module_wise_design_execution_package"
+  approval_required_before_export: false
+
+source:
+  figma_file_key: "ipSvV1FnmzvV8TK2Ig8Aiq"
+  figma_urls:
+    main_module_section: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=683-5219&t=TzCwzI6RZASLubyK-1"
+    main_page: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=412-2656&t=TzCwzI6RZASLubyK-1"
+    listing_page: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=420-2909&t=TzCwzI6RZASLubyK-1"
+    player: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=423-4387&t=TzCwzI6RZASLubyK-1"
+    player_controls_component: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=423-4384&t=TzCwzI6RZASLubyK-1"
+    unified_paywall_reference: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=493-3349"
+  node_ids:
+    main_module_section: "683:5219"
+    main_page: "412:2656"
+    listing_page: "420:2909"
+    player: "423:4387"
+    player_controls_component: "423:4384"
+    unified_paywall_reference: "493:3349"
+  frame_names:
+    - "Aarti & Bhajans"
+    - "Aarti & Bhajans - main page"
+    - "Aarti & Bhajans -  list view - opens when clicking on cards in Browse Category"
+    - "Aarti & Bhajans Player"
+    - "Player Controls"
+  visual_verification: "Harness-fetched Figma structure and rendered snapshots were available for main module section, main page, and listing page. Player was visible in the fetched module section snapshot. Mini-player was not present in supplied Figma."
+
+product_intent:
+  purpose: "Provide a calm devotional audio streaming area for Aarti, Bhajan, and related long-form devotional audio."
+  primary_user_goal: "Browse devotional audio by section, category, or deity and listen daily without generic platform noise."
+  primary_business_goal: "Convert users to Pro by making audio playback a paid daily-retention feature while keeping discovery free."
+  design_principle:
+    - "DP01: Devotional First, Feed Second"
+    - "DP02: Preserve Sacred Visual Dignity"
+    - "DP03: Calm Rituals, Clear Controls"
+    - "DP05: Pro as Added Devotional Value"
+    - "DP08: Lightweight, Readable, Small-Screen First"
+
+access_model:
+  free_user:
+    can_view:
+      - "Aarti & Bhajans main page"
+      - "Recently Played section if user has history"
+      - "Deities section"
+      - "Browse Categories section"
+      - "Newly Added section"
+      - "Most Played on Prabhuji section"
+      - "Category filtered 2-column listings"
+      - "Deity filtered 2-column listings"
+      - "Show all 2-column listings"
+      - "Audio artwork and titles in browse/listing surfaces"
+    can_do:
+      - "Open module from Home"
+      - "Tap category cards"
+      - "Tap deity cards"
+      - "Tap Show all"
+      - "Browse all listing screens"
+    paywall_triggers:
+      - trigger: "Tap any audio item with intent to play"
+        result: "Open unified paywall"
+        confidence: "confirmed"
+    should_not_show:
+      - "Paywall on module entry"
+      - "Paywall on category tap"
+      - "Paywall on deity tap"
+      - "Paywall on Show all tap"
+      - "Lock badges on browse cards"
+      - "Pro labels on audio cards"
+      - "Unlocked player before purchase"
+      - "Player like/share actions before purchase"
+    post_purchase_behavior:
+      result: "Open the originally tapped audio item in the player and auto-start playback."
+      preserve_context:
+        - "audio_id"
+        - "source_list_type"
+        - "source_filter"
+        - "queue_order"
+        - "scroll_position_if_possible"
+      confidence: "confirmed"
+  pro_user:
+    can_view:
+      - "All browse surfaces available to free users"
+      - "Unlocked full audio player"
+      - "In-app mini-player after playback starts"
+    can_do:
+      - "Stream audio"
+      - "Auto-start playback on item tap"
+      - "Pause/resume playback"
+      - "Seek with progress bar"
+      - "Rewind 10 seconds"
+      - "Forward 10 seconds"
+      - "Use previous and next within queue"
+      - "Like/favorite audio items"
+      - "Share item links through native share sheet"
+    paywall_triggers: []
+    should_not_show:
+      - "Playback paywall"
+      - "Aggressive Pro prompts during playback"
+      - "Lock badges on browse surfaces"
+
+screen_structure:
+  sections:
+    - id: "entry_from_home"
+      name: "Entry from Home"
+      source: "Home feature card and module main page node 412:2656"
+      visible_elements:
+        - "Top nav with back arrow"
+        - "Title: Aarti & Bhajans"
+      interactions:
+        - element: "Home feature card"
+          action: "tap"
+          result: "Open Aarti & Bhajans main page without paywall."
+          confidence: "confirmed"
+        - element: "Back arrow"
+          action: "tap"
+          result: "Return to previous screen, usually Home."
+          confidence: "assumed"
+      rules:
+        - "Do not show paywall on module entry."
+        - "Do not build top-right nav actions unless confirmed; rendered Figma shows only back and title."
+
+    - id: "main_page"
+      name: "Aarti & Bhajans Main Page"
+      source: "Figma node 412:2656"
+      visible_elements:
+        - "Recently Played"
+        - "Deities"
+        - "Browse Categories"
+        - "Newly Added"
+        - "Most Played on Prabhuji"
+        - "Show all links"
+        - "Horizontal audio cards"
+        - "Category cards"
+        - "Deity avatar cards"
+      interactions:
+        - element: "Audio card"
+          action: "tap"
+          result: "Free user opens unified paywall; Pro user opens player and auto-starts selected audio."
+          confidence: "confirmed"
+        - element: "Show all"
+          action: "tap"
+          result: "Open reusable 2-column listing page filtered by the tapped section."
+          confidence: "confirmed"
+        - element: "Category card"
+          action: "tap"
+          result: "Open reusable 2-column listing page filtered by category."
+          confidence: "confirmed"
+        - element: "Deity card"
+          action: "tap"
+          result: "Open reusable 2-column listing page filtered by deity/god."
+          confidence: "confirmed"
+      rules:
+        - "Browse surfaces are free."
+        - "No lock badges or Pro labels on cards in Phase 1."
+        - "All categories and deities are CMS-controlled."
+        - "Long titles may truncate with ellipsis as shown in Figma."
+
+    - id: "recently_played"
+      name: "Recently Played"
+      source: "Figma node 412:2656"
+      visible_elements:
+        - "Section title"
+        - "Show all link"
+        - "Horizontal audio cards"
+      interactions:
+        - element: "Show all"
+          action: "tap"
+          result: "Open listing page filtered to recently played items."
+          confidence: "confirmed"
+        - element: "Audio card"
+          action: "tap"
+          result: "Apply normal audio item access rule."
+          confidence: "confirmed"
+      rules:
+        - "Hide section if user has no playback history."
+        - "Do not show fake recently played items."
+
+    - id: "deities"
+      name: "Deities"
+      source: "Figma node 412:2656"
+      visible_elements:
+        - "Horizontal deity avatars"
+        - "Deity names"
+        - "Show all link"
+      interactions:
+        - element: "Deity avatar/card"
+          action: "tap"
+          result: "Open reusable listing filtered by deity/god."
+          confidence: "confirmed"
+        - element: "Show all"
+          action: "tap"
+          result: "Open deity listing or expanded deity picker using reusable listing/navigation pattern."
+          confidence: "partially_confirmed"
+      rules:
+        - "CMS controls deity list, images, order, and active state."
+        - "Paywall must not appear on deity tap."
+
+    - id: "browse_categories"
+      name: "Browse Categories"
+      source: "Figma node 412:2656"
+      visible_elements:
+        - "Prabhuji Originals category card"
+        - "Stotram category card"
+        - "Aarti category card"
+        - "Chalisa category card"
+        - "Mantra Jaap category card"
+        - "Katha category card"
+      interactions:
+        - element: "Category card"
+          action: "tap"
+          result: "Open reusable 2-column listing filtered by category."
+          confidence: "confirmed"
+        - element: "Show all"
+          action: "tap"
+          result: "Open all categories or listing using reusable pattern."
+          confidence: "partially_confirmed"
+      rules:
+        - "Visible categories are samples only."
+        - "CMS must support creating categories and assigning category tags to audio items."
+        - "Stotram, Chalisa, Mantra Jaap, and Katha remain audio categories inside this module in Phase 1."
+        - "Do not route these category cards to other modules in Phase 1."
+
+    - id: "newly_added"
+      name: "Newly Added"
+      source: "Figma node 412:2656"
+      visible_elements:
+        - "Section title"
+        - "Show all link"
+        - "Horizontal audio cards"
+      interactions:
+        - element: "Show all"
+          action: "tap"
+          result: "Open reusable listing sorted newest first."
+          confidence: "confirmed"
+        - element: "Audio card"
+          action: "tap"
+          result: "Apply normal audio item access rule."
+          confidence: "confirmed"
+      rules:
+        - "CMS/API provides item ordering."
+
+    - id: "most_played"
+      name: "Most Played on Prabhuji"
+      source: "Figma node 412:2656"
+      visible_elements:
+        - "Section title"
+        - "Show all link"
+        - "Horizontal audio cards"
+      interactions:
+        - element: "Show all"
+          action: "tap"
+          result: "Open reusable listing sorted by most played."
+          confidence: "confirmed"
+        - element: "Audio card"
+          action: "tap"
+          result: "Apply normal audio item access rule."
+          confidence: "confirmed"
+      rules:
+        - "Ranking can be CMS-curated or API-computed in Phase 1."
+
+    - id: "listing_page"
+      name: "Reusable 2-column Audio Listing"
+      source: "Figma node 420:2909"
+      visible_elements:
+        - "Top nav with back arrow"
+        - "Dynamic title, example: Aarti"
+        - "Two-column grid"
+        - "Audio artwork"
+        - "Audio title"
+      interactions:
+        - element: "Back arrow"
+          action: "tap"
+          result: "Return to previous main page or source screen."
+          confidence: "assumed"
+        - element: "Audio grid item"
+          action: "tap"
+          result: "Free user opens unified paywall; Pro user opens player and auto-starts selected audio."
+          confidence: "confirmed"
+      rules:
+        - "Use this same screen pattern for category, deity, section Show all, recently played, newly added, and most played listings."
+        - "Preserve scroll position on paywall cancel where possible."
+        - "Use pagination/lazy loading for long lists."
+
+    - id: "player"
+      name: "Full Audio Player"
+      source: "Figma node 423:4387 and player controls node 423:4384"
+      visible_elements:
+        - "Back arrow"
+        - "Cover art"
+        - "Title"
+        - "Singer"
+        - "Composer"
+        - "Like icon and count"
+        - "Share icon and count"
+        - "Elapsed time"
+        - "Total duration"
+        - "Progress bar"
+        - "Rewind 10 seconds"
+        - "Previous track"
+        - "Play/pause"
+        - "Next track"
+        - "Forward 10 seconds"
+      interactions:
+        - element: "Player open"
+          action: "load"
+          result: "Auto-start selected audio for Pro user or newly purchased user."
+          confidence: "confirmed"
+        - element: "Back arrow"
+          action: "tap"
+          result: "Return to previous browse/listing screen and continue playback through mini-player."
+          confidence: "confirmed"
+        - element: "Play/pause"
+          action: "tap"
+          result: "Toggle playback state."
+          confidence: "confirmed"
+        - element: "Progress bar"
+          action: "drag/tap"
+          result: "Seek within current audio."
+          confidence: "assumed"
+        - element: "Rewind 10 seconds"
+          action: "tap"
+          result: "Move playback back by 10 seconds, clamped at 0."
+          confidence: "confirmed"
+        - element: "Forward 10 seconds"
+          action: "tap"
+          result: "Move playback forward by 10 seconds, clamped at duration."
+          confidence: "confirmed"
+        - element: "Previous track"
+          action: "tap"
+          result: "Play previous item in current queue, or no-op/disabled at queue start."
+          confidence: "confirmed"
+        - element: "Next track"
+          action: "tap"
+          result: "Play next item in current queue, or no-op/disabled at queue end."
+          confidence: "confirmed"
+        - element: "Like icon"
+          action: "tap"
+          result: "Toggle like/favorite state and update displayed count optimistically if supported."
+          confidence: "confirmed"
+        - element: "Share icon"
+          action: "tap"
+          result: "Open native share sheet with item deep link; WhatsApp is an important destination."
+          confidence: "confirmed"
+      rules:
+        - "Player is Pro-only."
+        - "Do not interrupt active playback with aggressive monetization."
+        - "At audio completion, auto-play next item within current queue."
+        - "At queue end, stop playback. Do not loop endlessly in Phase 1."
+
+    - id: "mini_player"
+      name: "In-app Mini-player"
+      source: "Confirmed by designer; visual design missing from Figma"
+      visible_elements:
+        - "Artwork thumbnail"
+        - "Audio title"
+        - "Play/pause"
+        - "Close/dismiss"
+      interactions:
+        - element: "Mini-player surface"
+          action: "tap"
+          result: "Reopen full player for current audio."
+          confidence: "assumed"
+        - element: "Mini-player play/pause"
+          action: "tap"
+          result: "Toggle current playback."
+          confidence: "assumed"
+        - element: "Mini-player close/dismiss"
+          action: "tap"
+          result: "Stop playback and hide mini-player."
+          confidence: "assumed"
+      rules:
+        - "Mini-player appears only after Pro playback starts."
+        - "Mini-player remains visible while navigating inside the app."
+        - "Mini-player is confirmed for Phase 1 but requires final visual design."
+
+    - id: "unified_paywall_flow"
+      name: "Unified Paywall Flow"
+      source: "Known paywall node 493:3349; behavior confirmed by designer"
+      visible_elements:
+        - "Unified Prabhuji VIP Membership paywall"
+      interactions:
+        - element: "Free user audio item tap"
+          action: "tap"
+          result: "Open unified paywall and preserve original audio item context."
+          confidence: "confirmed"
+        - element: "Purchase success"
+          action: "complete"
+          result: "Open original audio item in player and auto-start playback."
+          confidence: "confirmed"
+        - element: "Paywall close/cancel"
+          action: "tap/system back"
+          result: "Return to prior listing/main page without playback."
+          confidence: "assumed"
+      rules:
+        - "Paywall triggers after clear listening intent only."
+        - "Use unified MVP paywall. No contextual paywall variants in Phase 1."
+
+audio_behavior:
+  playback_access:
+    free_user: "blocked_by_unified_paywall_on_audio_item_tap"
+    pro_user: "allowed"
+    confidence: "confirmed"
+  auto_start_on_player_open:
+    enabled: true
+    confidence: "confirmed"
+  queue:
+    source: "current source list or section"
+    examples:
+      - "Aarti category listing"
+      - "Hanuman ji deity listing"
+      - "Recently Played listing"
+      - "Newly Added listing"
+      - "Most Played listing"
+    previous_next_behavior: "Move within current queue. Disable or no-op at boundaries."
+    completion_behavior: "Auto-play next item in current queue. Stop at the end."
+    looping_phase_1: false
+    confidence: "confirmed"
+  controls:
+    play_pause: "Toggle playback"
+    rewind_10_seconds: "Seek backward 10 seconds, clamped at start"
+    forward_10_seconds: "Seek forward 10 seconds, clamped at duration"
+    previous_track: "Previous queue item"
+    next_track: "Next queue item"
+    progress_bar: "Display elapsed and total duration; user seek assumed"
+  mini_player:
+    required_phase_1: true
+    visual_design_available: false
+    display_condition: "Show after Pro playback has started and user leaves full player."
+    tap_behavior: "Reopen full player"
+    close_behavior: "Stop playback and dismiss mini-player"
+    confidence: "partially_confirmed"
+
+content_discovery_behavior:
+  categories:
+    source: "CMS"
+    hardcoded: false
+    sample_values_from_figma:
+      - "Prabhuji Originals"
+      - "Stotram"
+      - "Aarti"
+      - "Chalisa"
+      - "Mantra Jaap"
+      - "Katha"
+    tap_result: "Open reusable 2-column audio listing filtered by category."
+    confidence: "confirmed"
+  deities:
+    source: "CMS"
+    hardcoded: false
+    sample_values_from_figma:
+      - "Hanuman ji"
+      - "Ram ji"
+      - "Durga Ma"
+      - "Ganesh Ji"
+      - "Shri Krishna"
+      - "Vishnu Ji"
+      - "Lakshmi Ma"
+      - "Radha Ma"
+      - "Kathu Shyam"
+      - "Saraswati Ma"
+      - "Kali Ma"
+    tap_result: "Open reusable 2-column audio listing filtered by deity/god."
+    confidence: "confirmed"
+  show_all:
+    result: "Open reusable 2-column listing page filtered by source section."
+    confidence: "confirmed"
+  recently_played:
+    source: "User playback history"
+    empty_behavior: "Hide section."
+    confidence: "confirmed"
+  newly_added:
+    source: "CMS/API newest sort"
+    confidence: "assumed"
+  most_played:
+    source: "CMS-curated or API-computed ranking"
+    confidence: "assumed"
+
+engagement_rules:
+  like_favorite:
+    available_to: "Pro users from player"
+    behavior: "Toggle like/favorite state and show total like count."
+    login_prompt: "Do not add extra login prompt unless account/session state is missing."
+    phase_2: "Liked/favorite library"
+    confidence: "confirmed"
+  share:
+    available_to: "Pro users from player in Phase 1"
+    behavior: "Open native share sheet with item deep link."
+    important_destination: "WhatsApp"
+    recipient_behavior: "Free recipient can view/browse but must subscribe before playback."
+    confidence: "confirmed"
+
+data_requirements:
+  cms:
+    audio_item:
+      required_fields:
+        - "id"
+        - "title"
+        - "cover_image_url"
+        - "audio_stream_url"
+        - "duration_seconds"
+        - "category_tags"
+        - "deity_tags"
+        - "is_active"
+        - "sort_order"
+      recommended_fields:
+        - "singer_name"
+        - "composer_names"
+        - "language"
+        - "description"
+        - "published_at"
+        - "like_count"
+        - "share_count"
+        - "play_count"
+        - "is_featured"
+        - "is_prabhuji_original"
+        - "thumbnail_alt_text"
+        - "audio_bitrate"
+        - "content_rights_status"
+      access_fields:
+        - "requires_pro_for_playback: default true for this module"
+    audio_category:
+      required_fields:
+        - "id"
+        - "name"
+        - "image_url"
+        - "sort_order"
+        - "is_active"
+      recommended_fields:
+        - "slug"
+        - "description"
+        - "display_color"
+    deity:
+      required_fields:
+        - "id"
+        - "name"
+        - "image_url"
+        - "sort_order"
+        - "is_active"
+      recommended_fields:
+        - "slug"
+        - "alternate_names"
+    homepage_sections:
+      required_fields:
+        - "section_id"
+        - "section_type"
+        - "title"
+        - "item_ids_or_query"
+        - "sort_order"
+        - "is_active"
+      supported_section_types:
+        - "recently_played"
+        - "deities"
+        - "browse_categories"
+        - "newly_added"
+        - "most_played"
+    user_playback_history:
+      required_fields:
+        - "user_id"
+        - "audio_id"
+        - "last_played_at"
+      recommended_fields:
+        - "last_position_seconds"
+        - "completed_count"
+  api:
+    listing_query_parameters:
+      - "category_id"
+      - "deity_id"
+      - "section_type"
+      - "sort"
+      - "page"
+      - "page_size"
+    paywall_continuation_parameters:
+      - "audio_id"
+      - "source_list_type"
+      - "source_filter"
+      - "queue_item_ids_or_query"
+  local_state:
+    player_state:
+      - "current_audio_id"
+      - "queue_context"
+      - "elapsed_seconds"
+      - "is_playing"
+      - "mini_player_visible"
+
+states:
+  loading:
+    description: "Show lightweight skeletons/placeholders for sections and artwork. Do not block the whole page if one section is still loading."
+  empty_main:
+    description: "If all CMS audio/category/deity content is empty, show a calm empty state and keep top nav visible."
+    suggested_copy: "No audio available right now. Please try again later."
+  empty_recently_played:
+    description: "Hide Recently Played when user has no playback history."
+  empty_listing:
+    description: "Show a simple empty state for category/deity/section listings with no results."
+    suggested_copy: "No audio found here yet."
+  partial_cms_failure:
+    description: "Hide or retry the failed section while keeping working sections visible."
+  full_cms_failure:
+    description: "Show retry state. Do not show paywall."
+  paywall_cancelled:
+    description: "Return to previous browse/listing context without playback. Preserve scroll position where possible."
+  purchase_success:
+    description: "Open original tapped audio item and auto-start playback with preserved queue context."
+  audio_loading:
+    description: "Show player loading/buffer state while audio stream initializes."
+  audio_error:
+    description: "Show retry message inside player. Do not auto-skip unless user taps next."
+    suggested_copy: "This audio could not play. Please try again."
+  offline:
+    description: "No offline downloads in Phase 1. Show retry/offline messaging when data or stream cannot load."
+  queue_end:
+    description: "Stop playback when the final item in the queue completes. Do not loop endlessly in Phase 1."
+
+analytics_events:
+  - event_name: "aarti_bhajans_opened"
+    trigger: "User opens Aarti & Bhajans module."
+    required: true
+  - event_name: "aarti_bhajans_section_show_all_tapped"
+    trigger: "User taps Show all in any main page section."
+    required: true
+  - event_name: "aarti_bhajans_category_tapped"
+    trigger: "User taps a Browse Categories card."
+    required: true
+  - event_name: "aarti_bhajans_deity_tapped"
+    trigger: "User taps a deity card."
+    required: true
+  - event_name: "aarti_bhajans_audio_item_tapped"
+    trigger: "User taps any audio item in a row or grid."
+    required: true
+  - event_name: "aarti_bhajans_paywall_shown"
+    trigger: "Free user taps audio item and unified paywall appears."
+    required: true
+  - event_name: "aarti_bhajans_purchase_success_from_audio"
+    trigger: "User successfully subscribes from the audio item paywall flow."
+    required: true
+  - event_name: "aarti_bhajans_player_opened"
+    trigger: "Unlocked player opens for an audio item."
+    required: true
+  - event_name: "aarti_bhajans_play_started"
+    trigger: "Audio playback starts."
+    required: true
+  - event_name: "aarti_bhajans_play_paused"
+    trigger: "User pauses audio."
+    required: false
+  - event_name: "aarti_bhajans_play_completed"
+    trigger: "Audio item reaches the end."
+    required: true
+  - event_name: "aarti_bhajans_next_tapped"
+    trigger: "User taps next track."
+    required: false
+  - event_name: "aarti_bhajans_previous_tapped"
+    trigger: "User taps previous track."
+    required: false
+  - event_name: "aarti_bhajans_seek_used"
+    trigger: "User drags or taps the progress bar to seek."
+    required: false
+  - event_name: "aarti_bhajans_rewind_10_tapped"
+    trigger: "User taps rewind 10 seconds."
+    required: false
+  - event_name: "aarti_bhajans_forward_10_tapped"
+    trigger: "User taps forward 10 seconds."
+    required: false
+  - event_name: "aarti_bhajans_like_toggled"
+    trigger: "User likes or unlikes an audio item."
+    required: true
+  - event_name: "aarti_bhajans_share_tapped"
+    trigger: "User taps share from player."
+    required: true
+  - event_name: "aarti_bhajans_mini_player_shown"
+    trigger: "Mini-player appears after user leaves full player while audio is active."
+    required: true
+  - event_name: "aarti_bhajans_mini_player_tapped"
+    trigger: "User taps mini-player to reopen full player."
+    required: false
+  - event_name: "aarti_bhajans_audio_error"
+    trigger: "Audio fails to load or play."
+    required: true
+
+qa_checks:
+  - "A free user can open Aarti & Bhajans without seeing a paywall."
+  - "A free user can open category listings without seeing a paywall."
+  - "A free user can open deity listings without seeing a paywall."
+  - "A free user sees the unified paywall only after tapping an audio item."
+  - "After successful purchase from an audio item paywall, the originally tapped item opens and starts playing."
+  - "Cancelling the paywall returns the user to the previous browse or listing context without playback."
+  - "A Pro user tapping an audio item opens the player and audio auto-starts."
+  - "Recently Played is hidden when the user has no playback history."
+  - "Browse Categories are not hardcoded and can be controlled by CMS."
+  - "Audio items can be tagged with one or more categories."
+  - "Audio items can be tagged with one or more deities/gods."
+  - "Tapping a category opens the reusable 2-column listing page filtered by category."
+  - "Tapping a deity opens the reusable 2-column listing page filtered by deity."
+  - "Show all opens the reusable 2-column listing page filtered by the source section."
+  - "No lock badges or Pro labels appear on browse cards in Phase 1."
+  - "The player shows cover art, title, singer, composer, like count, share count, progress, and controls."
+  - "The play/pause button toggles playback state."
+  - "The rewind button moves playback back 10 seconds without going below 0."
+  - "The forward button moves playback forward 10 seconds without exceeding duration."
+  - "Previous and next controls move only within the current queue."
+  - "When the current queue ends, playback stops and does not loop endlessly."
+  - "Leaving the full player while audio is playing shows the in-app mini-player."
+  - "Tapping the mini-player reopens the full player."
+  - "Closing the mini-player stops playback and hides the mini-player."
+  - "Share opens the native share sheet with an item deep link."
+  - "A free recipient of a shared link must subscribe before playback."
+  - "Like/favorite toggles state and shows a total like count."
+  - "Audio load errors show a retry option and do not auto-skip to the next item."
+
+handoff_readiness:
+  ready_for_dev_discussion: true
+  ready_for_final_build: false
+  remaining_questions_file: "open-questions.yaml"
+  approval_status: "approved"
+  main_build_blocker: "Mini-player visual design is confirmed behavior but missing from Figma."
+  notes:
+    - "The package is approved as behavior truth."
+    - "Final UI build should wait for mini-player component design or accept the working assumption."
+    - "Use the unified MVP paywall."
+    - "Do not add lyrics, repetition counter, or next-track card in Phase 1."

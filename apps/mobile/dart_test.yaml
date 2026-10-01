@@ -1,0 +1,25 @@
+# Flutter test config (TAM-60).
+#
+# Real-font / real-asset goldens are platform-locked artifacts (font
+# rasterization/anti-aliasing differs macOS↔Linux). Per the figma-flutter skill
+# they are kept as a LOCAL regression lock + review artifact, not skipped:
+#   - local / same-platform CI:  flutter test            (runs everything)
+#   - cross-platform CI gate:    flutter test --exclude-tags golden
+#   - regenerate goldens:        flutter test --update-goldens test/goldens/
+
+# Global per-test timeout. Any single test taking >60s is almost certainly
+# hung (unmocked platform channel, mis-restored FlutterError.onError, an
+# animation that never idles). Fail fast (60s) instead of the widget-test
+# binding's 10-minute default. Root cause of a 30-minute /pre-pr was ONE file
+# with 3 tests that each hit the 10-min default (see
+# support_screen_multi_size_smoke_test.dart 2026-08-03 investigation).
+#
+# If a specific test legitimately needs longer, override at the call site:
+#   testWidgets('slow one', ..., timeout: Timeout(Duration(minutes: 2)))
+timeout: 60s
+
+tags:
+  golden:
+    description: >-
+      Golden-image tests (Figma-fidelity render locks). Platform-sensitive;
+      exclude on cross-platform CI runners.

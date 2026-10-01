@@ -1,0 +1,94 @@
+open_questions:
+  remaining:
+    - id: "q1"
+      question: "For offline reading, should MVP cache only opened/read text content, or should Pro users be able to manually download books?"
+      owner: "PM / Engineering"
+      priority: "high"
+      recommendation_for_mvp: "Cache opened text content only. Manual download can be Phase 2."
+
+    - id: "q2"
+      question: "Should cached offline reading include audio, or only text?"
+      owner: "PM / Engineering"
+      priority: "high"
+      recommendation_for_mvp: "Text only for MVP. Audio caching can be Phase 2."
+
+    - id: "q3"
+      question: "What should happen when a Pro user opens uncached content without internet?"
+      owner: "Engineering / Design"
+      priority: "high"
+      recommendation: "Show offline unavailable state with retry and message that this content is not available offline yet."
+
+    - id: "q4"
+      question: "Should font size preference be stored locally only, or synced to user account?"
+      owner: "Engineering"
+      priority: "medium"
+      recommendation_for_mvp: "Store locally on device."
+
+    - id: "q5"
+      question: "What exact disabled/end-state behavior should Previous/Next use on first and last chapter?"
+      owner: "Design / Engineering"
+      priority: "medium"
+      recommendation_for_mvp: "Disable Previous on first chapter. Disable Next on last chapter or replace with Finish if a completion state is added later."
+
+    - id: "q6"
+      question: "What final CMS schema will represent major books versus direct scripture content?"
+      owner: "Engineering / Content"
+      priority: "high"
+      recommendation: "Use content_type values: major_book and direct_scripture."
+
+resolved_decisions:
+  - id: "r1"
+    decision: "Books reading is Pro-only; discovery is free."
+    source: "User confirmation"
+
+  - id: "r2"
+    decision: "Free users can browse Books Home, View All listing, and category listing pages."
+    source: "User confirmation"
+
+  - id: "r3"
+    decision: "Free user tapping any book/content item card opens unified paywall directly."
+    source: "User confirmation"
+
+  - id: "r4"
+    decision: "No contextual Pro explanation before paywall in MVP. Unified paywall only."
+    source: "User confirmation"
+
+  - id: "r5"
+    decision: "Chalisa, Aarti, Kavach, and Stotram are major categories that contain smaller devotional content items."
+    source: "User confirmation"
+
+  - id: "r6"
+    decision: "Direct category content opens direct reader for Pro users and paywall for free users."
+    source: "User confirmation"
+
+  - id: "r7"
+    decision: "Audio is available only for major big books under Books, including their sub-books/kandas/chapters."
+    source: "User confirmation"
+
+  - id: "r8"
+    decision: "All books and content come from CMS."
+    source: "User confirmation"
+
+  - id: "r9"
+    decision: "Reading progress is not MVP; it can be Phase 2 and should not be marketed now."
+    source: "User confirmation"
+
+  - id: "r10"
+    decision: "Font size preference should be stored if technically feasible."
+    source: "User confirmation"
+
+  - id: "r11"
+    decision: "Chapter drawer and Previous/Next navigation are inside reader only for MVP."
+    source: "User confirmation"
+
+  - id: "r12"
+    decision: "Offline cached reading is preferred for MVP because older users may read while traveling or with poor internet."
+    source: "User confirmation"
+
+  - id: "r13"
+    decision: "Search, bookmarks, quote sharing, chapter sharing, and Continue Reading are not MVP."
+    source: "User confirmation"
+
+  - id: "r14"
+    decision: "Show All / View All on Books Home opens a listing page using the same two-column layout as category listing."
+    source: "User confirmation"

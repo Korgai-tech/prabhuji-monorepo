@@ -1,0 +1,11 @@
+-- Remove the status overlay-template feature (product decision).
+--
+-- The mobile app never consumed this table: it composites the status name-band
+-- overlay from a hardcoded Figma layout + each item's `overlaySafeArea` column
+-- (kept), and derived nothing renderable from the template. The public
+-- `GET /status/overlay-template` endpoint and the `/admin/status/overlay-templates`
+-- CMS CRUD are removed alongside this.
+--
+-- Standalone table (no foreign keys in or out), so the drop is self-contained
+-- and reversible by re-adding the model.
+DROP TABLE "status_overlay_templates";

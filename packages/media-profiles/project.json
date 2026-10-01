@@ -1,0 +1,16 @@
+{
+  "name": "media-profiles",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/media-profiles/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/media-profiles",
+        "command": "vitest run"
+      }
+    }
+  }
+}

@@ -1,0 +1,658 @@
+design_execution_package:
+  app: Prabhuji
+  module: Status Sharing
+  screen_or_flow: Module Spec
+  version: v1.0
+  status: approved
+  package_type: module_wise_design_execution_package
+  approval_required_before_export: false
+  recommended_export_path: Prabhuji / Status Sharing / Module Spec / v1.0
+
+source:
+  figma_file_key: ipSvV1FnmzvV8TK2Ig8Aiq
+  main_figma_url: https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=371-2182&t=TzCwzI6RZASLubyK-1
+  related_figma_urls:
+    - name: Status Home
+      node_id: 302:4384
+      url: https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=302-4384&t=TzCwzI6RZASLubyK-1
+    - name: Personal Details
+      node_id: 371:2185
+      url: https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=371-2185&t=TzCwzI6RZASLubyK-1
+    - name: Business Details
+      node_id: 371:3567
+      url: https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=371-3567&t=TzCwzI6RZASLubyK-1
+  node_ids:
+    main_section: 371:2182
+    status_home: 302:4384
+    personal_details: 371:2185
+    business_details: 371:3567
+  frame_names:
+    - Status
+    - Status-home
+    - Personal Details
+    - Business details
+
+product_intent:
+  purpose: Let logged-in users discover, customize, preview, and share devotional status images and videos.
+  primary_user_goal: Find a devotional status, add personal or business details, and share it through WhatsApp or another social app.
+  primary_business_goal: Convert free users to Pro at the moment of final share or export intent.
+  design_principle:
+    - DP01 Devotional First, Feed Second
+    - DP02 Preserve Sacred Visual Dignity
+    - DP05 Pro as Added Devotional Value
+    - DP08 Lightweight, Readable, Small-Screen First
+
+access_model:
+  unauthenticated_user:
+    can_view: false
+    behavior:
+      - Login is required for all app features.
+      - Tapping Status while logged out opens login/auth.
+      - After login success, return user to Status.
+    confidence: confirmed
+  free_user:
+    can_view:
+      - Status tab after login
+      - deity filters
+      - image status previews
+      - video status previews
+      - personal overlay preview
+      - business overlay preview
+      - Edit Details flow
+      - like action
+      - Next action
+    can_do:
+      - browse status feed
+      - filter by deity
+      - customize details
+      - save details to backend
+      - upload avatar through image picker
+      - preview final overlay
+      - like status content
+    paywall_triggers:
+      - tapping Share
+      - any future final output action such as download
+      - any future final output action such as save to gallery
+      - any future final output action such as set as status
+    should_not_show:
+      - Pro paywall on Status tab entry
+      - Pro paywall while browsing
+      - Pro paywall while filtering
+      - Pro paywall while editing details
+      - lock badges on discovery cards
+      - contextual paywall variants in Phase 1
+    confidence: confirmed
+  pro_user:
+    can_view:
+      - everything free user can view
+    can_do:
+      - everything free user can do
+      - render final image or video output
+      - share through native Android share sheet
+      - share to WhatsApp if available in share sheet
+    paywall_triggers: []
+    should_not_show:
+      - paywall after tapping Share
+    confidence: confirmed
+
+screen_structure:
+  sections:
+    - id: status_home_header
+      name: Status Home Header
+      source: Figma node 302:4384
+      visible_elements:
+        - Status title
+        - Edit Details CTA with pencil icon
+      interactions:
+        - element: Edit Details CTA
+          action: tap
+          result: Open Add your details flow with the current active tab or Personal by default.
+          confidence: confirmed
+      rules:
+        - Keep header simple and readable.
+        - Do not show Pro lock in header.
+
+    - id: deity_filter_row
+      name: Deity Filters
+      source: Figma node 302:4384
+      visible_elements:
+        - All Gods
+        - Hanuman ji
+        - Ram ji
+        - Durga Ma
+        - Ganesh Ji
+        - additional CMS deity filters
+      interactions:
+        - element: Deity filter
+          action: tap
+          result: Filter feed to selected deity and keep vertical feed position at first matching status.
+          confidence: confirmed
+        - element: All Gods filter
+          action: tap
+          result: Show combined CMS-curated status feed.
+          confidence: confirmed
+      rules:
+        - Filter row scrolls horizontally.
+        - Filter list comes from CMS.
+        - Empty filtered result shows calm empty state and All Gods recovery action.
+
+    - id: vertical_status_feed
+      name: Vertical Status Feed
+      source: Figma node 302:4384
+      visible_elements:
+        - tall status preview card
+        - devotional image or video media
+        - overlay details area
+        - bottom nav
+      interactions:
+        - element: Feed
+          action: vertical scroll or swipe
+          result: Move to the next or previous status card.
+          confidence: confirmed
+        - element: Active video card
+          action: card enters viewport
+          result: Autoplay video muted by default and pause any other video.
+          confidence: confirmed
+        - element: Active video card
+          action: card leaves viewport
+          result: Pause video playback.
+          confidence: confirmed
+      rules:
+        - Feed behaves like reels-style vertical scroll.
+        - Only one card is active at a time.
+        - Best-effort alternate image and video content.
+        - Continue showing available content if one media type is unavailable.
+        - Ordering is CMS-curated in Phase 1.
+        - No personalized ordering in Phase 1.
+
+    - id: status_card_actions
+      name: Status Card Actions and Engagement
+      source: Figma node 302:4384
+      visible_elements:
+        - Share CTA with WhatsApp icon
+        - like icon and count
+        - view icon and count
+        - Next button
+      interactions:
+        - element: Share CTA
+          action: tap by logged-in free user
+          result: Open unified paywall without rendering output first.
+          confidence: confirmed
+        - element: Share CTA
+          action: tap by Pro user
+          result: Render final status file with overlay and then open native Android share sheet.
+          confidence: confirmed
+        - element: Like icon
+          action: tap
+          result: Toggle liked state and update like count optimistically if backend accepts.
+          confidence: confirmed
+        - element: Next button
+          action: tap
+          result: Advance to the next status card.
+          confidence: confirmed
+        - element: View count
+          action: card visible for analytics threshold
+          result: Log view analytics and optionally increment backend count.
+          confidence: assumed
+      rules:
+        - Like is free and not Pro-gated.
+        - Share is the only visible Phase 1 final output action.
+        - View and like metrics should not dominate devotional content.
+
+    - id: overlay_preview
+      name: Personal or Business Overlay Preview
+      source: Figma node 302:4384
+      visible_elements:
+        - avatar/profile image
+        - personal name or business name
+        - business details
+        - business mobile number
+      interactions:
+        - element: Overlay preview
+          action: details saved
+          result: Update feed preview using active saved profile.
+          confidence: confirmed
+      rules:
+        - Free users can preview overlay fully.
+        - Overlay is burned into exported image or video.
+        - Overlay should remain in lower designed area.
+        - Avoid covering deity faces or sacred symbols when possible.
+
+    - id: personal_details_screen
+      name: Personal Details
+      source: Figma node 371:2185
+      visible_elements:
+        - back button
+        - Add your details title
+        - Personal tab
+        - Business tab
+        - avatar image picker area
+        - Your name input
+        - Save button
+      interactions:
+        - element: Back button
+          action: tap
+          result: Return to Status Home.
+          confidence: confirmed
+        - element: Business tab
+          action: tap
+          result: Switch to Business Details form.
+          confidence: confirmed
+        - element: Avatar camera icon
+          action: tap
+          result: Open Android image picker.
+          confidence: confirmed
+        - element: Save button
+          action: tap with valid details
+          result: Save personal profile to backend, set active profile to Personal, and update previews.
+          confidence: confirmed
+      rules:
+        - Camera capture is not Phase 1.
+        - Keep entered data if save fails.
+
+    - id: business_details_screen
+      name: Business Details
+      source: Figma node 371:3567
+      visible_elements:
+        - back button
+        - Add your details title
+        - Personal tab
+        - Business tab
+        - Business Information label
+        - Business name input
+        - Business details input
+        - Business mobile number input
+        - Save button
+      interactions:
+        - element: Personal tab
+          action: tap
+          result: Switch to Personal Details form.
+          confidence: confirmed
+        - element: Save button
+          action: tap with valid details
+          result: Save business profile to backend, set active profile to Business, and update previews.
+          confidence: confirmed
+        - element: Business mobile number input
+          action: validation
+          result: Accept basic Indian 10-digit number in Phase 1 and show inline error if invalid.
+          confidence: confirmed
+      rules:
+        - No OTP verification in Phase 1.
+        - Business fields must fit the fixed overlay in Phase 1.
+
+    - id: bottom_navigation
+      name: Bottom Navigation
+      source: Figma node 302:4384
+      visible_elements:
+        - Home
+        - Status active
+        - Mandir
+        - Horoscope
+        - Books
+      interactions:
+        - element: Bottom nav item
+          action: tap
+          result: Navigate to selected app section after login check.
+          confidence: confirmed
+      rules:
+        - Exactly five nav items.
+        - Status is active on Status Home.
+        - Bottom nav does not directly trigger Pro paywall.
+
+authentication_rules:
+  login_required_for_status: true
+  unauthenticated_entry_behavior:
+    result: Open login/auth and return to intended Status destination after success.
+    confidence: confirmed
+  session_expired_behavior:
+    result: Ask user to log in again before saving, liking, or sharing.
+    confidence: assumed
+
+status_feed_behavior:
+  source: CMS
+  ordering: CMS-curated
+  scroll_model: vertical reels-like feed
+  media_types:
+    - image
+    - video
+  alternation:
+    rule: Best-effort alternate image and video content.
+    fallback: If one type is unavailable, continue with available content.
+    confidence: confirmed
+  personalization:
+    phase_1: false
+    phase_2: true
+  active_card_rules:
+    - Only one status card is active at a time.
+    - Active card controls video playback.
+    - Next button moves to next card.
+
+video_behavior:
+  phase_1:
+    autoplay: true
+    muted_by_default: true
+    sound_controls_visible: false
+    only_one_video_at_a_time: true
+    pause_when_offscreen: true
+    tap_to_unmute: false
+    confidence: confirmed
+  phase_2:
+    tap_to_unmute: true
+    sound_controls_visible: true
+
+engagement_rules:
+  like:
+    access: logged-in free and Pro users
+    pro_required: false
+    behavior: Toggle liked state and update count after backend confirmation or optimistic update with rollback.
+    confidence: confirmed
+  view_count:
+    visible: true
+    display_source: CMS or backend engagement service
+    analytics_threshold: Card visible for 2 seconds.
+    confidence: assumed
+  next:
+    behavior: Advance to next status card.
+    confidence: confirmed
+
+overlay_details_behavior:
+  active_profile_selector:
+    location: Edit Details only
+    profile_types:
+      - Personal
+      - Business
+    active_profile_rule: Last saved or selected profile becomes active for all feed previews.
+    confidence: confirmed
+  preview_access:
+    free_user: full preview allowed
+    pro_user: full preview allowed
+    confidence: confirmed
+  storage:
+    location: backend
+    confidence: confirmed
+  avatar_upload:
+    phase_1_source: Android image picker
+    phase_2_source: camera capture
+    confidence: confirmed
+  personal_profile_fields:
+    - field: display_name
+      label: Your name
+      required: true
+      max_length: 40
+      confidence: assumed
+    - field: avatar_image_url
+      label: Avatar image
+      required: false
+      confidence: confirmed
+  business_profile_fields:
+    - field: business_name
+      label: Business name
+      required: true
+      max_length: 50
+      confidence: assumed
+    - field: business_details
+      label: Business details
+      required: false
+      max_length: 80
+      confidence: assumed
+    - field: business_mobile_number
+      label: Business mobile number
+      required: false
+      validation: Indian 10-digit number in Phase 1
+      otp_required: false
+      confidence: confirmed
+  export_rule:
+    burn_overlay_into_output: true
+    confidence: confirmed
+
+sharing_export_behavior:
+  phase_1_visible_action: Share
+  output_actions_pro_only:
+    - share
+    - download
+    - save_to_gallery
+    - set_as_status
+  free_user_share_tap:
+    result: Open unified paywall.
+    render_before_paywall: false
+    confidence: confirmed
+  pro_user_share_tap:
+    result_steps:
+      - Start render of final image or video with active overlay.
+      - Disable duplicate Share taps during render.
+      - On success open native Android share sheet.
+      - Let user choose WhatsApp, WhatsApp Status if exposed, or another installed app.
+    confidence: confirmed
+  share_sheet:
+    platform: Android native share sheet
+    whatsapp_priority: true
+    whatsapp_only: false
+    direct_whatsapp_status_deeplink_phase_1: false
+    direct_whatsapp_status_deeplink_phase_2_candidate: true
+    confidence: confirmed
+  output_file:
+    image_formats:
+      - image/jpeg
+      - image/png
+    video_format: video/mp4
+    overlay_burned_in: true
+    generated_before_share_sheet: true
+    confidence: confirmed
+
+data_requirements:
+  cms:
+    status_item:
+      required_fields:
+        - id
+        - title
+        - deity_ids
+        - media_type
+        - image_url
+        - video_url
+        - thumbnail_url
+        - sort_order
+        - is_active
+        - like_count
+        - view_count
+        - overlay_safe_area
+      optional_fields:
+        - duration_seconds
+        - language
+        - festival_tag
+        - share_caption
+        - created_at
+        - updated_at
+      rules:
+        - CMS controls feed ordering in Phase 1.
+        - CMS should tag each item by deity.
+        - CMS should provide both media URL and thumbnail for video.
+        - CMS should provide overlay safe area guidance where possible.
+    deity_filter:
+      required_fields:
+        - id
+        - display_name
+        - icon_image_url
+        - sort_order
+        - is_active
+      default_filter: All Gods
+    overlay_template:
+      phase_1:
+        rule: Single fixed overlay style from Figma.
+      phase_2:
+        rule: Multiple overlay templates and advanced placement.
+  backend:
+    user_status_profile:
+      required_fields:
+        - user_id
+        - active_profile_type
+        - personal_display_name
+        - business_name
+        - business_details
+        - business_mobile_number
+        - avatar_image_url
+        - updated_at
+      rules:
+        - Store details in backend.
+        - Last selected or saved profile controls active overlay.
+    engagement:
+      required_fields:
+        - status_id
+        - user_id
+        - liked
+        - viewed_at
+      rules:
+        - Like is free for logged-in users.
+        - View tracking rule needs final Engineering and Analytics agreement.
+
+states:
+  - id: loading_initial
+    description: Loading deity filters and first status items.
+    behavior: Show lightweight skeleton or loader and keep bottom nav visible.
+    confidence: assumed
+  - id: unauthenticated
+    description: User is not logged in.
+    behavior: Open login/auth before Status features and return after success.
+    confidence: confirmed
+  - id: feed_empty
+    description: CMS returns no status content.
+    behavior: Show calm empty message and retry CTA.
+    confidence: assumed
+  - id: filter_empty
+    description: Selected deity has no status content.
+    behavior: Show empty message and offer All Gods filter.
+    confidence: assumed
+  - id: cms_error
+    description: Status feed request fails.
+    behavior: Show retry CTA and keep cached filters if available.
+    confidence: assumed
+  - id: image_load_failed
+    description: Image media fails to load.
+    behavior: Show placeholder and allow Next or scroll.
+    confidence: assumed
+  - id: video_load_failed
+    description: Video media fails to load.
+    behavior: Show thumbnail if available, otherwise placeholder, and allow feed to continue.
+    confidence: assumed
+  - id: offline_cached
+    description: User is offline but cached content exists.
+    behavior: Show cached previews and require connection for render/share if needed.
+    confidence: assumed
+  - id: offline_no_cache
+    description: User is offline with no cached content.
+    behavior: Show offline message and retry.
+    confidence: assumed
+  - id: non_pro_share_attempt
+    description: Logged-in free user taps Share.
+    behavior: Open unified paywall.
+    confidence: confirmed
+  - id: render_in_progress
+    description: Pro user tapped Share and output is being generated.
+    behavior: Show progress and prevent duplicate Share taps.
+    confidence: assumed
+  - id: render_failed
+    description: Output generation fails.
+    behavior: Show retry and keep user on same status.
+    confidence: assumed
+  - id: no_share_target
+    description: Android has no app available to receive the share intent.
+    behavior: Show calm error message.
+    confidence: assumed
+  - id: details_save_failed
+    description: Backend save fails.
+    behavior: Keep entered values and show retry or error.
+    confidence: assumed
+  - id: invalid_business_mobile
+    description: Business mobile number is invalid.
+    behavior: Show inline error and block save until fixed or removed if optional.
+    confidence: confirmed
+
+analytics_events:
+  - event_name: status_opened
+    trigger: Logged-in user opens Status tab.
+    required: true
+  - event_name: status_login_required_shown
+    trigger: Logged-out user tries to open Status.
+    required: true
+  - event_name: status_filter_selected
+    trigger: User taps a deity filter.
+    required: true
+  - event_name: status_card_viewed
+    trigger: Status card remains visible for analytics threshold.
+    required: true
+  - event_name: status_next_tapped
+    trigger: User taps Next.
+    required: true
+  - event_name: status_like_toggled
+    trigger: User taps like or unlike.
+    required: true
+  - event_name: status_edit_details_tapped
+    trigger: User taps Edit Details.
+    required: true
+  - event_name: status_avatar_upload_started
+    trigger: User taps avatar image picker area.
+    required: false
+  - event_name: status_avatar_upload_completed
+    trigger: User selects an image successfully.
+    required: false
+  - event_name: status_details_saved
+    trigger: Personal or Business details save succeeds.
+    required: true
+  - event_name: status_share_tapped
+    trigger: User taps Share.
+    required: true
+  - event_name: status_paywall_shown
+    trigger: Logged-in free user taps Share and unified paywall opens.
+    required: true
+  - event_name: status_export_render_started
+    trigger: Pro user share rendering begins.
+    required: true
+  - event_name: status_export_render_succeeded
+    trigger: Final output file is created.
+    required: true
+  - event_name: status_export_render_failed
+    trigger: Final output generation fails.
+    required: true
+  - event_name: status_native_share_sheet_opened
+    trigger: Android share sheet opens after render success.
+    required: true
+  - event_name: status_share_completed
+    trigger: System reports share completion if available.
+    required: false
+
+qa_checks:
+  - Status tab requires login before the user can browse or interact.
+  - Logged-in free users can browse Status without seeing a Pro paywall on entry.
+  - Logged-in free users can filter by deity without seeing a Pro paywall.
+  - Logged-in free users can open Edit Details without seeing a Pro paywall.
+  - Logged-in free users can save Personal details to backend.
+  - Logged-in free users can save Business details to backend.
+  - Business mobile number validation does not require OTP in Phase 1.
+  - Avatar upload opens image picker and not camera capture in Phase 1.
+  - Free users can preview the personal or business overlay on status cards.
+  - Free users tapping Share see the unified paywall before any output rendering.
+  - Pro users tapping Share generate a final image or video file before the share sheet opens.
+  - Exported image files include the active overlay burned into the output.
+  - Exported video files include the active overlay burned into the output.
+  - Android native share sheet opens after successful Pro export.
+  - WhatsApp appears as a share option when installed and exposed by Android.
+  - Share is not WhatsApp-only in Phase 1.
+  - Download, save to gallery, and set as status are Pro-only if added later.
+  - Video statuses autoplay muted by default in Phase 1.
+  - No video status autoplays with sound in Phase 1.
+  - Only one video plays at a time.
+  - Video pauses when its card leaves the viewport.
+  - Next advances to the next status card.
+  - Like is available to logged-in free users and is not Pro-gated.
+  - Feed alternation between image and video is best effort and does not create empty slots.
+  - If a deity filter has no content, the user can return to All Gods.
+  - Bottom nav shows Status as active on Status Home.
+  - Bottom nav does not directly trigger a Pro paywall.
+  - Sacred media is not covered by aggressive monetization or lock badges.
+
+handoff_readiness:
+  ready_for_dev_discussion: true
+  ready_for_final_build: true
+  remaining_questions_file: open-questions.yaml
+  notes:
+    - Package is approved by designer.
+    - Remaining questions are non-blocking implementation details.

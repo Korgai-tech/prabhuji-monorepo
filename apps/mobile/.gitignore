@@ -1,0 +1,58 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Golden-test failure artifacts — Flutter auto-writes these into
+# `test/goldens/failures/` on every failing run (master + test + two diff
+# PNGs per failing test). They're build outputs, not source: nothing reads
+# them back, and `flutter test --update-goldens` regenerates the tracked
+# masters from scratch. Keep them out of history.
+test/goldens/failures/
+
+# App secrets — API keys / SDK tokens / anything we don't want in git
+# history or code review. Kept alongside `env/<staging|preprod|prod>.json`
+# for locality but NEVER committed. Sibling `env/prabhujiSecrets.example.json`
+# (when it exists) is committed as a template with placeholder values.
+env/prabhujiSecrets.json

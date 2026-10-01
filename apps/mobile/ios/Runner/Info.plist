@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Prabhu Ji</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Prabhu Ji</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<!-- UPI Autopay: iOS hides other apps unless their schemes are declared
+	     here, so canLaunchUrl returns false for every one of these without it.
+	     NOTE: UPI intent support on iOS is materially weaker than Android;
+	     apps/mobile/CLAUDE.md states this app is Android-first, and the Pay Now
+	     path should be verified on a physical iOS device before being offered
+	     there. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>upi</string>
+		<string>gpay</string>
+		<string>phonepe</string>
+		<string>paytmmp</string>
+		<string>credpay</string>
+	</array>
+	<!-- App Tracking Transparency prompt copy. Required when the app calls
+	     `AppTrackingTransparency.requestTrackingAuthorization` (we do, via
+	     `AdvertisingIdService` at Analytics.init). Without this key the OS
+	     silently denies IDFA access and the app crashes on the request in
+	     iOS 14.5+. Mirrors krutyug_flutter_app's Info.plist entry. -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This identifier is used to improve attribution and analytics.</string>
+	<!-- TAM-164 / TAM-166 — chat composer's voice-input mic. The composer
+	     shows an in-app rationale before invoking the OS prompt and a "Open
+	     Settings" recovery dialog when the user has permanently denied it.
+	     No recording is captured until the permission is granted. Hinglish
+	     copy so it matches the rest of the in-app voice UX (TAM-166 locked
+	     with user 2026-09-03). -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Apki awaaz sunane ke liye microphone chahiye.</string>
+	<!-- TAM-166 — SFSpeechRecognizer on iOS drives the transcription seam
+	     the composer's voice input uses. iOS requires this key ALONGSIDE
+	     NSMicrophoneUsageDescription; without it the recognizer errors out
+	     the first time it's initialised, even if the mic permission is
+	     already granted. Recognition is device-native (Apple's on-device
+	     speech model) — no audio leaves the phone. -->
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Apki awaaz ko text mein badalne ke liye speech recognition chahiye.</string>
+</dict>
+</plist>

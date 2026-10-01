@@ -1,0 +1,180 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  redis:
+    image: redis:7
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  floci-aws:
+    image: floci/floci:latest
+    ports:
+      - '4566:4566'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/app/data
+    environment:
+      FLOCI_HOSTNAME: floci-aws
+      FLOCI_BASE_URL: http://floci-aws:4566
+
+  # Media bucket bootstrap (TAM-83) — one-shot + idempotent, so a fresh
+  # `docker compose up -d` yields a usable media bucket with no manual step.
+  # Creates the local stand-in for the real S3 bucket (Terraform:
+  # infra/terraform/modules/stack/media.tf) and applies the SAME CORS rule, so
+  # the admin panel's browser PUT works locally for the same reason it works on
+  # stage. The bucket name matches MEDIA_BUCKET, so no code branches on env.
+  #
+  # LOCAL ONLY, AND ONLY LOCAL: there is no CloudFront here — MEDIA_PUBLIC_BASE_URL
+  # points straight at floci over http, which is why the api needs
+  # MEDIA_ALLOW_INSECURE_URLS=true in dev (ADR A7). An asset uploaded here is
+  # reachable only from this machine; it does not exist on stage, and a phone
+  # cannot fetch it. floci is a dev convenience; S3 + CloudFront is the product.
+  floci-init:
+    image: amazon/aws-cli:latest
+    entrypoint: ['/bin/sh', '/scripts/floci-init.sh']
+    volumes:
+      - ./scripts:/scripts:ro
+    environment:
+      # floci test credentials — it does not verify them. Stage/prod presign with
+      # the api ECS task role; there are no static access keys anywhere.
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: ap-south-1
+      FLOCI_ENDPOINT_URL: http://floci-aws:4566
+      MEDIA_BUCKET: ${MEDIA_BUCKET:-app-local-media}
+      # comma-separated; mirrors Terraform's media_cors_allowed_origins
+      MEDIA_CORS_ALLOWED_ORIGINS: ${MEDIA_CORS_ALLOWED_ORIGINS:-http://localhost:4200}
+    depends_on:
+      floci-aws:
+        condition: service_healthy
+    restart: 'no'
+
+  # Analytics warehouse (apps/events/db) — profile-gated so a bare `docker compose
+  # up` stays lean; `pnpm nx run events:migrate` starts it on demand.
+  # Pinned 25.3: first version with the JSON column type GA (ClickHouse Cloud runs newer).
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3
+    profiles: ['clickhouse']
+    environment:
+      CLICKHOUSE_DB: analytics
+      CLICKHOUSE_USER: default
+      # local container only (image requires one) — same env var + default as
+      # apps/events/db/migrate.ts; Cloud creds live in CLICKHOUSE_HOST/USER/PASSWORD
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_LOCAL_PASSWORD:-local-dev-only}
+    ports:
+      - '${CLICKHOUSE_HTTP_PORT:-8123}:8123'
+      - '${CLICKHOUSE_TCP_PORT:-9000}:9000'
+    healthcheck:
+      test: ['CMD', 'clickhouse-client', '--query', 'SELECT 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Local deploy target: the built API image against the services above.
+  # Start via `pnpm deploy:local` (or: docker compose --profile deploy up -d --build api)
+  api:
+    profiles: ['deploy']
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - '${API_PORT:-3000}:3000'
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      LOG_LEVEL: info
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/app
+      JWT_SECRET: ${JWT_SECRET:-local-deploy-only-secret-change-me}
+      ENABLE_REDIS: 'true'
+      REDIS_URL: redis://redis:6379
+      ENABLE_SECRETS_MANAGER: 'true'
+      AWS_ENDPOINT_URL: http://floci-aws:4566
+      AWS_REGION: ap-south-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      # Media (TAM-83) — required at boot by TAM-84's env.ts, so they must be set
+      # even though this profile cannot exercise the CMS (see below).
+      MEDIA_BUCKET: ${MEDIA_BUCKET:-app-local-media}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:4566/app-local-media}
+      #
+      # MEDIA_ALLOW_INSECURE_URLS IS DELIBERATELY NOT SET HERE, AND MUST NOT BE.
+      # This profile runs NODE_ENV=production to mirror stage/prod, and TAM-84's
+      # env.ts hard-fails boot on MEDIA_ALLOW_INSECURE_URLS=true under
+      # NODE_ENV=production (ADR A7 / risk A-R6) — that single assertion is what
+      # keeps the carve-out out of a deployed environment, and it works here too.
+      #
+      # CONSEQUENCE: `pnpm deploy:local` CANNOT exercise media upload/read — the
+      # https-only `mediaUrl` contract rejects floci's http URLs without the
+      # carve-out. That is correct: this profile is an image smoke test, not the
+      # CMS dev loop. For media work use the supported loop instead —
+      # `docker compose up -d` + `pnpm nx serve api` (NODE_ENV=development, which
+      # may set MEDIA_ALLOW_INSECURE_URLS=true; see .env.example).
+      #
+      # THE ONLY PLACE THIS FLAG IS EVER SET. env.ts hard-fails boot when
+      # AUTH_OTP_PROVIDER or PAYMENT_PROVIDER is `stub` under NODE_ENV=production
+      # — the assertion that stops a deployed env inheriting the fixed OTP "1234"
+      # or an auto-approving in-memory gateway. This profile is precisely the
+      # legitimate exception: a local image smoke test with no MSG91 or Cashfree
+      # credential in existence. It is NOT wired into
+      # modules/stack/services.tf, so it cannot reach stage or prod without
+      # someone adding it to a task definition by hand.
+      ALLOW_STUB_PROVIDERS_IN_PRODUCTION: 'true'
+      # observability -> hosted ClickStack (off unless you set these in .env)
+      ENABLE_TELEMETRY: ${ENABLE_TELEMETRY:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      HYPERDX_API_KEY: ${HYPERDX_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      floci-aws:
+        condition: service_started
+      floci-init:
+        condition: service_completed_successfully
+
+  # Local deploy target: the built click-events collector (HTTP, Amplitude V2
+  # at /2/httpapi) against floci-aws Kinesis. Start via `pnpm deploy:local`
+  # (or: docker compose --profile deploy up -d --build events)
+  events:
+    profiles: ['deploy']
+    build:
+      context: .
+      dockerfile: apps/events/Dockerfile
+    ports:
+      - '${EVENTS_PORT:-3001}:3001'
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      EVENTS_PORT: 3001
+      LOG_LEVEL: info
+      EVENTS_API_KEY: ${EVENTS_API_KEY:-local-deploy-only-api-key-change-me}
+      ENABLE_KINESIS: 'true'
+      KINESIS_STREAM_NAME: ${KINESIS_STREAM_NAME:-events}
+      AWS_ENDPOINT_URL: http://floci-aws:4566
+      AWS_REGION: ap-south-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      # observability -> hosted ClickStack (off unless you set these in .env)
+      ENABLE_TELEMETRY: ${ENABLE_TELEMETRY:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      HYPERDX_API_KEY: ${HYPERDX_API_KEY:-}
+    depends_on:
+      floci-aws:
+        condition: service_started

@@ -1,0 +1,19 @@
+name: notification_state
+description: Reads the device's notification delivery state (app permission, channel, Do Not Disturb) for push analytics. Android-only; a real plugin so it also registers in the FCM background engine.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.prabhuji.notificationstate
+        pluginClass: NotificationStatePlugin

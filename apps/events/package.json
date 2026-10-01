@@ -1,0 +1,20 @@
+{
+  "name": "events",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "tsx db/migrate.ts migrate",
+    "start": "pnpm run migrate && node dist/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-kinesis": "^3.1079.0",
+    "@hyperdx/node-opentelemetry": "^0.11.0",
+    "fastify": "^5.9.0",
+    "pino": "^10.3.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@clickhouse/client": "^1.23.0"
+  }
+}

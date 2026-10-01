@@ -1,0 +1,56 @@
+open_questions:
+  - id: "q1"
+    question: "Which source will power Phase 1 daily horoscope results: AI model trained/configured for horoscope or third-party horoscope API?"
+    owner: "Product / Engineering / Business"
+    priority: "high"
+    current_decision: "Use an abstract provider interface in the app and backend. Final provider is not chosen."
+    recommendation: "Choose third-party API for fastest MVP if quality and language coverage are acceptable; use AI model only if business needs stronger control over devotional tone and step structure."
+    blocker: true
+
+  - id: "q2"
+    question: "What is the exact fallback hierarchy when horoscope content or TTS is unavailable in the user's selected app language?"
+    owner: "Product / Engineering"
+    priority: "medium"
+    current_decision: "App-level language from onboarding/settings is the source of truth. Unsupported language fallback is not fully defined."
+    recommendation: "Fallback to Hindi or English based on the app's global localization policy, and never block text reading because TTS is unavailable."
+    blocker: false
+
+  - id: "q3"
+    question: "Should TTS mute state persist beyond the current horoscope result session?"
+    owner: "Product / Design"
+    priority: "medium"
+    current_decision: "Mute applies during the current horoscope result session only."
+    recommendation: "Do not persist mute globally in Phase 1 unless the user changes a global sound setting."
+    blocker: false
+
+  - id: "q4"
+    question: "Will CMS/admin have a full UI for adding/removing/reordering steps in Phase 1, or will Engineering manage backend config manually?"
+    owner: "CMS / Engineering"
+    priority: "medium"
+    current_decision: "CMS/admin must control steps in Phase 1, but admin tooling detail is not final."
+    recommendation: "Store step schema in backend config for MVP even if the admin UI is basic. Avoid hardcoding steps in the mobile app."
+    blocker: false
+
+  - id: "q5"
+    question: "Will Phase 1 allow cached horoscope results when the user is offline?"
+    owner: "Engineering / Product"
+    priority: "low"
+    current_decision: "If no network and no cached result exists, show offline-friendly retry. Cache policy is not finalized."
+    recommendation: "Cache the same zodiac/date/language result for the day after first successful load if technically simple."
+    blocker: false
+
+phase_2_items:
+  - "Saved/default zodiac sign."
+  - "Daily horoscope reminder notification."
+  - "Share horoscope card or text."
+  - "Save/favorite horoscope."
+  - "Replay TTS control."
+  - "Pause/resume TTS control."
+  - "TTS speed control."
+  - "Weekly horoscope mode."
+  - "Monthly horoscope mode."
+  - "Personalized horoscope using date of birth, birth time, and birth place, only if business approves."
+  - "Horoscope history/archive."
+  - "Advanced language and voice selection."
+  - "Analytics-based horoscope personalization."
+  - "Admin preview/testing workflow for generated horoscope content."

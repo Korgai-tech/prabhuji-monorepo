@@ -1,0 +1,322 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!--
+      NO SMS permissions on purpose (TAM-123). Onboarding auto-fills the OTP
+      via Google Play services' SMS Retriever API, which is permission-less
+      by design: it only reveals SMS bodies that contain THIS app's 11-char
+      signature hash. RECEIVE_SMS / READ_SMS are dangerous permissions Google
+      Play flags and require a Play Console permission-declaration form; do
+      NOT add them.
+    -->
+
+    <!-- Audio streaming (TAM-59): just_audio streams Pro audio over the network. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!--
+      Google Advertising ID (GAID). Required on Android 13+ (API 33+) for the
+      `advertising_id` plugin to return a real ID via Google Play services —
+      without it, the plugin returns the all-zero sentinel and analytics events
+      lose the `adid` column. Play Console flags this as a "reason for use"
+      permission; ours is analytics + attribution (mirrors krutyug_flutter_app).
+    -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
+
+    <!--
+      Firebase Cloud Messaging notifications. POST_NOTIFICATIONS is a runtime
+      permission on Android 13+ (API 33+) — the app requests it after login via
+      FirebaseNotifications.requestPermission(). On older versions, granted at
+      install.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!--
+      Native set-as-phone-ringtone (TAM-68). WRITE_SETTINGS is a SPECIAL /
+      AppOps permission: it is NOT granted by a runtime permission dialog, only
+      from the system screen launched by Settings.ACTION_MANAGE_WRITE_SETTINGS.
+      The `prabhuji/ringtone` channel deep-links there and the Dart state machine
+      re-checks Settings.System.canWrite(context) on app resume.
+    -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions"/>
+
+    <!--
+      Native set-as-wallpaper (TAM-70). SET_WALLPAPER is an install-time (normal)
+      permission — no runtime dialog. The `prabhuji/wallpaper` channel uses
+      WallpaperManager.setBitmap (home via FLAG_SYSTEM, lock via FLAG_LOCK on
+      API 24+, or both). Devices where WallpaperManager.isWallpaperSupported()
+      is false (or lock-screen on older OEMs) reply "unsupported" and the UI
+      shows the exact PRD message. A true animated live wallpaper (a
+      WallpaperService) is out of Phase-1 scope; the live set applies the
+      representative still frame as the home wallpaper (documented fallback).
+    -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER"/>
+
+    <!--
+      TAM-164 — chat composer's voice-input mic. RECORD_AUDIO is a runtime-
+      dangerous permission; the composer requests it via `permission_handler`
+      with a rationale dialog before the OS prompt and a "open Settings"
+      recovery dialog when the user has permanently denied it. No recording
+      is captured until the permission is granted.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
+    <!--
+      Phase-2 background/lockscreen playback (TAM-59 #PLAN_UNCERTAINTY — Aarti q2
+      vs Mantras §6.13, unresolved cross-PRD conflict). When audio_service lands,
+      it adds a foreground media service here:
+        <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+        <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+        <service android:name="com.ryanheise.audioservice.AudioService"
+                 android:foregroundServiceType="mediaPlayback" .../>
+        <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver" .../>
+      It is intentionally omitted in Phase 1 (in-app playback only).
+    -->
+    <!--
+      TAM-125 #EXPORT_CRITICAL: downloads are stored under the app-private
+      `getApplicationDocumentsDirectory()/downloads/` folder — that path
+      would ride Android's default ADB / Google-drive Auto Backup unless
+      we opt out. `android:allowBackup="false"` disables Auto Backup
+      wholesale for the app so the encrypted-audio blobs never leave the
+      device via a system backup. This also blocks JWT / entitlement /
+      identify-dedupe blobs from riding backup — an intentional security
+      hardening beyond just the downloads scope.
+    -->
+    <application
+        android:label="Prabhu Ji"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        tools:replace="android:allowBackup">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait"><!-- Portrait-only app: layouts are Figma-authored on a 360×800 portrait
+                                                    canvas. Complements SystemChrome.setPreferredOrientations in main.dart. -->
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!--
+              Deep linking (TAM-124) — TWO filters, one Activity, one parser.
+
+              (1) Custom scheme `prabhuji://` for internal use only: push
+                  notification payloads, `adb shell am start`, in-app hand-
+                  offs, and future app-to-app integrations. `autoVerify` is
+                  irrelevant here — custom schemes are unverified by design;
+                  the OS opens them without a chooser once installed.
+
+                  Never used for external shares — messaging apps silently
+                  swallow custom schemes and there is no install fallback.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="prabhuji"/>
+            </intent-filter>
+
+            <!--
+              (2) Android App Links on `https://krutyug.ai/app/*` with
+                  `android:autoVerify="true"`. On install, the OS fetches
+                  `https://krutyug.ai/.well-known/assetlinks.json` and checks
+                  our SHA-256 fingerprint against the one it computes from
+                  the installed APK. If they match, tapping ANY link under
+                  the /app/* path prefix opens THIS app directly — no
+                  browser flash, no disambiguation dialog.
+
+                  Path prefix is `/app/` (with trailing slash) so we DON'T
+                  claim the marketing site's other routes (e.g.
+                  `/privacy.html`).
+
+                  If verification fails (assetlinks.json missing, wrong
+                  fingerprint, HTTPS 404) the OS silently falls through to
+                  the browser — which is where the marketing landing page
+                  redirects to Play Store. Verify with:
+                    adb shell pm get-app-links com.prabhuji.ai
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"
+                      android:host="krutyug.ai"
+                      android:pathPrefix="/app/"/>
+            </intent-filter>
+        </activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+
+        <!--
+          Firebase Cloud Messaging defaults. FCM uses these when a notification
+          arrives while the app is backgrounded/terminated so the system tray
+          entry uses our channel + icon. `prabhuji_default` matches the channel
+          id created at runtime by FirebaseNotifications.initialize().
+          The icon points at ic_launcher for now — Android renders it as a
+          silhouette; a dedicated white-on-transparent `ic_stat_notification`
+          drawable would look cleaner but is not blocking.
+        -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="prabhuji_default"/>
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher"/>
+
+        <!--
+          Meta / Facebook App Events. The FB Android SDK reads these tags at
+          Application.onCreate BEFORE Dart runs, then lazily calls
+          AppEventsLogger.newLogger(context) on first use. Missing tags → the
+          "lateinit property appEventsLogger has not been initialized" crash.
+
+          Values are injected as string resources from
+          `env/prabhujiSecrets.json` at build time (see app/build.gradle.kts
+          `metaSecrets` block + `resValue` in defaultConfig). Empty string is
+          safe in placeholder builds because Dart's `Secrets.metaEnabled` gate
+          means `FacebookAppEvents()` is never constructed and no native call
+          fires with empty credentials.
+        -->
+        <meta-data
+            android:name="com.facebook.sdk.ApplicationId"
+            android:value="@string/facebook_app_id"/>
+        <meta-data
+            android:name="com.facebook.sdk.ClientToken"
+            android:value="@string/facebook_client_token"/>
+        <meta-data
+            android:name="com.facebook.sdk.AutoInitEnabled"
+            android:value="true"/>
+        <meta-data
+            android:name="com.facebook.sdk.AutoLogAppEventsEnabled"
+            android:value="true"/>
+
+        <!--
+          Story/status direct-share FileProvider. StorySharePlugin hands
+          rendered status files (image PNGs / video MP4s living in the app's
+          cache dir) to WhatsApp / Instagram / Facebook / Snapchat via
+          FileProvider.getUriForFile + a one-shot FLAG_GRANT_READ_URI_PERMISSION.
+          Authority MUST match the one composed in the Kotlin plugin:
+          "${applicationId}.storyshare.fileprovider".
+
+          Distinct from the FileProvider share_plus registers for its own
+          ACTION_SEND path — that authority is internal to the plugin; our
+          intents can't use its paths.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.storyshare.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/story_share_file_paths"/>
+        </provider>
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- TAM-166 — speech_to_text needs Android's SpeechRecognizer service.
+             On Android 11+ (API 30) package visibility hides other apps by
+             default, and SpeechRecognizer.createSpeechRecognizer(context) fails
+             to bind to the system voice-recognition service without this query.
+             Documented on the plugin README under "Android SDK 30 or later". -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
+        </intent>
+        <!-- UPI Autopay mandate approval.
+
+             Android 11+ (API 30) package visibility hides other apps by
+             default, and url_launcher's canLaunchUrl/launchUrl consult it. WITHOUT
+             this entry launching `upi://` silently returns false on every device
+             with a UPI app installed — the payment simply never starts, with no
+             error to diagnose. Declaring the scheme (not a package list) keeps
+             every UPI app eligible, so Android shows its own chooser rather than
+             us privileging one PSP. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="upi"/>
+        </intent>
+        <!-- Decentro's "shortened intent link" may be an https redirect we
+             resolve client-side; this keeps the browser fallback launchable. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+
+        <!--
+          Story/status direct-share targets. On Android 11+ (API 30)
+          `PackageManager.getPackageInfo(pkg, 0)` and
+          `Intent.resolveActivity(pm)` treat other apps as invisible unless
+          the querying app either holds QUERY_ALL_PACKAGES (Play policy
+          gates it) or declares the packages here. Without this block,
+          StorySharePlugin.installedTargets() would silently report every
+          app as "not installed" and every shareTo() would fail resolve,
+          collapsing the sheet down to "More apps" on every device.
+        -->
+        <package android:name="com.whatsapp"/>
+        <package android:name="com.whatsapp.w4b"/>
+        <package android:name="com.instagram.android"/>
+        <package android:name="com.facebook.katana"/>
+        <package android:name="com.snapchat.android"/>
+
+        <!-- ACTION_SEND with an image is the reachability test that lets
+             share_plus's OS chooser + the Facebook/WhatsApp/Snapchat
+             fallback intents actually resolve. -->
+        <intent>
+            <action android:name="android.intent.action.SEND"/>
+            <data android:mimeType="image/*"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND"/>
+            <data android:mimeType="video/*"/>
+        </intent>
+
+        <!-- Instagram Story dedicated intent (per Meta docs). Both image and
+             video MIMEs are declared so resolveActivity() sees whichever
+             media the current status uses. -->
+        <intent>
+            <action android:name="com.instagram.share.ADD_TO_STORY"/>
+            <data android:mimeType="image/*"/>
+        </intent>
+        <intent>
+            <action android:name="com.instagram.share.ADD_TO_STORY"/>
+            <data android:mimeType="video/*"/>
+        </intent>
+
+        <!-- Facebook Story dedicated intent. The plugin only uses this when
+             an FB App ID is provisioned; without an app id it falls back
+             through the ACTION_SEND query above. -->
+        <intent>
+            <action android:name="com.facebook.stories.ADD_TO_STORY"/>
+            <data android:mimeType="image/*"/>
+        </intent>
+        <intent>
+            <action android:name="com.facebook.stories.ADD_TO_STORY"/>
+            <data android:mimeType="video/*"/>
+        </intent>
+    </queries>
+</manifest>

@@ -1,0 +1,44 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "node_modules/.cache/tsc/app-out",
+    "types": ["node"],
+    // "." (not "src") because prisma/seeds is now part of this program: src/index.ts
+    // imports the TAM-80 boot seeder. Safe for the shipped artifact — outDir here is a
+    // throwaway typecheck cache (--emitDeclarationOnly), and the runtime bundle is built
+    // by esbuild, whose outbase follows its entry points (both still under src/), so
+    // dist/index.js does not move.
+    "rootDir": ".",
+    "tsBuildInfoFile": "node_modules/.cache/tsc/app.tsbuildinfo"
+  },
+  // prisma/seeds was previously in NO tsconfig — the seeds ran under tsx, which strips
+  // types without checking them, so they were never typechecked. Including them here
+  // closes that gap as a side effect of TAM-80.
+  // TAM-85: scripts/ (the OpenAPI emitter, drift gate and public-doc filter) was
+  // in NO tsconfig for the same reason prisma/seeds wasn't — it runs under tsx,
+  // which strips types without checking them. The filter decides what ships in
+  // the APK, so it is typechecked like the rest of the app.
+  // `src/**/*.json` so the chat module's bundled content-id map is part of the
+  // program: it is imported as a module (esbuild inlines it), not read at runtime,
+  // so there is no asset-copy step or path-resolution to get wrong in the bundle.
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.json",
+    "prisma/seeds/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/__tests__/**",
+    "src/**/*.test.ts",
+    "src/**/*.integration.test.ts",
+    "scripts/**/__tests__/**"
+  ],
+  "references": [
+    {
+      "path": "../../packages/kuldevta-registry/tsconfig.lib.json"
+    },
+    {
+      "path": "../../packages/media-profiles/tsconfig.lib.json"
+    }
+  ]
+}

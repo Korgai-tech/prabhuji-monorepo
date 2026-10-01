@@ -1,0 +1,70 @@
+open_questions:
+  - id: "q1"
+    question: "Should the Help/question icon remain on Home in MVP or move fully into Account/Settings?"
+    owner: "Product / Design"
+    priority: "medium"
+    current_decision: "If Help & Support is available, icon opens Help & Support. If not ready, hide or route via Account/Settings."
+    blocker: false
+
+  - id: "q2"
+    question: "What exact Help & Support content should be available in Phase 1?"
+    owner: "Product / Support"
+    priority: "medium"
+    current_decision: "Necessary help material, not finalized."
+    blocker: false
+
+  - id: "q3"
+    question: "What exact CMS schema will be used for banner destination rules and Pro feature discovery flags?"
+    owner: "Engineering / CMS"
+    priority: "high"
+    current_decision: "CMS controls banner destination and whether free users should see paywall."
+    blocker: true
+
+  - id: "q4"
+    question: "For feed ordering, should MVP default to pure CMS order or trending-first mixed order?"
+    owner: "Product / Content"
+    priority: "medium"
+    current_decision: "Support CMS-curated order and trending-first random content-type order."
+    recommendation: "Start with CMS order; add trending-first switch when engagement data exists."
+    blocker: false
+
+  - id: "q5"
+    question: "What should happen if user is not logged in and taps Like?"
+    owner: "Product / Engineering"
+    priority: "medium"
+    current_decision: "Like toggles and saves if logged in. Fallback for non-logged-in user needs definition."
+    recommendation: "If login is mandatory in app, no issue. If guest mode exists, prompt login or save locally."
+    blocker: false
+
+  - id: "q6"
+    question: "What exact share payload should be used for each content type?"
+    owner: "Product / Content / Engineering"
+    priority: "medium"
+    current_decision: "Native share sheet with WhatsApp as important destination. Payload comes from CMS metadata."
+    blocker: false
+
+  - id: "q7"
+    question: "Should Home feed audio autoplay with sound by default or follow device/audio policy?"
+    owner: "Product / Engineering"
+    priority: "high"
+    current_decision: "Audio autoplay when card comes into view, one audio at a time, stop/pause when leaving viewport."
+    recommendation: "Respect OS audio focus and user mute/silent mode behavior."
+    blocker: false
+
+  - id: "q8"
+    question: "Should Search be fully removed from Figma Phase 1 handoff screens to avoid implementation confusion?"
+    owner: "Design"
+    priority: "medium"
+    current_decision: "Search is removed from Phase 1."
+    recommendation: "Create a Phase 1 Figma variant without search."
+    blocker: false
+
+phase_2_items:
+  - "Search bar"
+  - "Mic search"
+  - "Feed personalization by preferred deity"
+  - "Feed personalization by language"
+  - "Feed personalization by recent module usage"
+  - "Feed personalization by Pro/free status"
+  - "Auto-generated Trending/Suggested labels from engagement"
+  - "Contextual paywall variants"

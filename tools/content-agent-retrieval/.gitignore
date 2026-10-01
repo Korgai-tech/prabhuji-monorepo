@@ -1,0 +1,5 @@
+__pycache__/
+# build output of `fix_content_agent.py build|create|update` - regenerate, never edit by hand
+content_agent_dsl.json
+# live-agent backups can hold a full production prompt; keep them local
+backup-live-*.json

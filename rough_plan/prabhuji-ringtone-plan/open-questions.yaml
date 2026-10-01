@@ -1,0 +1,35 @@
+open_questions:
+  - id: q1
+    question: Should Phase 1 use the custom Figma share sheet or the native Android share sheet?
+    owner: Engineering
+    priority: medium
+    current_decision: Engineering can choose either the custom Figma share sheet or native Android share sheet.
+    recommendation: Use native Android share sheet for Phase 1 unless custom destination routing is already simple.
+    blocker: false
+  - id: q2
+    question: Should the displayed set count represent Set Ringtone taps or only confirmed successful ringtone sets?
+    owner: Product / Engineering
+    priority: medium
+    current_decision: Phase 1 primary product event is ringtone_set_tapped. Track ringtone_set_success if Engineering can reliably detect it.
+    recommendation: Use successful sets for displayed set count when reliable. If OS confirmation is unreliable, use backend-confirmed set attempts and keep analytics labels clear.
+    blocker: false
+  - id: q3
+    question: Should the microphone icon be hidden or shown disabled in Phase 1?
+    owner: Design / Engineering
+    priority: low
+    current_decision: Voice search is Phase 2 and must not request microphone permission in Phase 1.
+    recommendation: Hide the mic icon in Phase 1 to avoid user confusion. If retained for visual consistency, disable it.
+    blocker: false
+
+phase_2_items:
+  - Voice search through microphone.
+  - Set as alarm tone.
+  - Set as notification tone.
+  - Set as contact-specific ringtone.
+  - Download or offline ringtone cache for Pro users.
+  - Favorite ringtone library.
+  - Personalized ringtone recommendations by preferred deity.
+  - Trending, Most Set, and New filters.
+  - Share actual audio clip if licensing and business rules allow.
+  - Regional language search and tags.
+  - Ringtone collections by deity, festival, or occasion.

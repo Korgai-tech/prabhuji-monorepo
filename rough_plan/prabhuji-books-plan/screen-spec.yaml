@@ -1,0 +1,501 @@
+design_execution_package:
+  app: "Prabhuji"
+  module: "Books & Scriptures"
+  version: "1.0"
+  status: "approved_mvp_spec_pending_engineering_feasibility"
+  output_type: "module_wise_design_execution_package"
+  approval_required_before_export: true
+
+source:
+  primary_figma_url: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=650-4182&t=8GTJCrqUNd9uTCCg-1"
+  primary_figma_file_key: "ipSvV1FnmzvV8TK2Ig8Aiq"
+  primary_figma_node_id: "650:4182"
+  primary_figma_section_name: "Books"
+  listing_figma_url: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=562-5565&t=8GTJCrqUNd9uTCCg-1"
+  listing_figma_node_id: "562:5565"
+
+product_intent:
+  summary: "Allow devotees to browse and read spiritual books and scriptures inside Prabhuji. Discovery is free; reading is Pro."
+  primary_user_goal: "Browse available devotional books and read spiritual content."
+  primary_business_goal: "Increase Pro subscription value and conversion through premium devotional reading content."
+  access_model: "pro_only_reading_with_free_discovery"
+
+access_rules:
+  free_user:
+    can_view:
+      - "Books tab"
+      - "Books Home"
+      - "Books carousel/library previews"
+      - "Browse Categories"
+      - "Category listing pages"
+      - "View All Books listing"
+      - "Book/content cover thumbnails and titles"
+    cannot_access:
+      - "Book Contents"
+      - "Reader"
+      - "Chapter content"
+      - "Listen Audio"
+      - "Chapters drawer"
+      - "Font size controls"
+      - "Previous/Next reader navigation"
+    paywall_trigger:
+      rule: "Free user tapping any actual book/content item card opens unified paywall directly."
+      contextual_explanation_before_paywall: false
+      paywall_type: "unified_prabhuji_paywall"
+      examples:
+        - "Tap Valmiki Ramayan card -> unified paywall"
+        - "Tap Shri Hanuman Chalisa card -> unified paywall"
+        - "Tap any item inside Aarti/Kavach/Stotram listing -> unified paywall"
+        - "Tap any content thumbnail from View All Books -> unified paywall"
+
+  pro_user:
+    can_access:
+      - "Book Contents"
+      - "Reader"
+      - "Chapter navigation"
+      - "Listen Audio for eligible major books"
+      - "Font size adjustment"
+      - "Cached/offline reading where technically feasible"
+
+content_model:
+  types:
+    major_book:
+      description: "Large spiritual book with sub-books/kandas and chapters."
+      examples:
+        - "Ramayan"
+        - "Bhagavad Gita"
+      structure:
+        - "major_book"
+        - "sub_book_or_kanda"
+        - "chapter"
+        - "reader"
+      contents_screen_required: true
+      audio_available_in_mvp: true
+      pro_user_flow:
+        - "tap_major_book_card"
+        - "open_book_contents"
+        - "tap_start_reading_or_chapter"
+        - "open_reader"
+      free_user_flow:
+        - "tap_major_book_card"
+        - "open_unified_paywall"
+
+    direct_scripture:
+      description: "Shorter devotional item inside a major category."
+      categories:
+        - "Chalisa"
+        - "Aarti"
+        - "Kavach"
+        - "Stotram"
+      structure:
+        - "category"
+        - "content_item"
+        - "reader"
+      contents_screen_required: false
+      audio_available_in_mvp: false
+      pro_user_flow:
+        - "tap_category"
+        - "open_category_listing"
+        - "tap_content_item"
+        - "open_direct_reader"
+      free_user_flow:
+        - "tap_category"
+        - "open_category_listing"
+        - "tap_content_item"
+        - "open_unified_paywall"
+
+screens:
+  books_home:
+    figma_node_id: "534:5061"
+    name: "Books Home"
+    type: "primary_tab_screen"
+    purpose: "Allow users to discover books, categories, and newly added spiritual content."
+    visible_elements:
+      - "Top app bar/title: Books"
+      - "Books horizontal carousel"
+      - "Show All / View All link"
+      - "Browse Categories section"
+      - "Category cards: Chalisa, Aarti, Kavach, Stotram"
+      - "Newly Added Books section"
+      - "Bottom navigation with Books active"
+    interactions:
+      - id: "tap_show_all"
+        trigger: "User taps Show All / View All"
+        result: "Open All Books listing using 2-column grid layout"
+        destination_screen: "all_books_listing"
+        analytics_event: "books_show_all_tapped"
+      - id: "tap_category_card"
+        trigger: "User taps Chalisa/Aarti/Kavach/Stotram"
+        result: "Open selected category listing"
+        destination_screen: "category_listing"
+        analytics_event: "books_category_tapped"
+      - id: "tap_book_card_free"
+        trigger: "Free user taps any book/content card"
+        result: "Open unified paywall"
+        destination_screen: "unified_paywall"
+        analytics_event: "books_paywall_triggered"
+      - id: "tap_major_book_card_pro"
+        trigger: "Pro user taps major book card"
+        result: "Open Book Contents"
+        destination_screen: "book_contents"
+        analytics_event: "book_card_tapped"
+
+  all_books_listing:
+    figma_node_id: "562:5565"
+    name: "All Books Listing"
+    type: "listing_screen"
+    purpose: "Show all available major books in a 2-column grid."
+    source_trigger: "Show All / View All from Books Home"
+    layout:
+      columns: 2
+      item_pattern: "book_cover_plus_title"
+      reference_layout: "Category Listing"
+    visible_elements:
+      - "Internal page top nav with back button"
+      - "Page title: Books or All Books"
+      - "Two-column book grid"
+      - "Book cover"
+      - "Book title"
+    interactions:
+      - id: "tap_book_free"
+        trigger: "Free user taps book card"
+        result: "Open unified paywall"
+        analytics_event: "books_paywall_triggered"
+      - id: "tap_major_book_pro"
+        trigger: "Pro user taps major book card"
+        result: "Open Book Contents"
+        destination_screen: "book_contents"
+        analytics_event: "book_card_tapped"
+      - id: "tap_back"
+        trigger: "User taps back"
+        result: "Return to Books Home"
+
+  category_listing:
+    figma_node_id: "562:5565"
+    name: "Category Listing"
+    type: "listing_screen"
+    purpose: "Show smaller devotional content items inside a selected major category."
+    applies_to:
+      - "Chalisa"
+      - "Aarti"
+      - "Kavach"
+      - "Stotram"
+    visible_elements:
+      - "Internal page top nav with back button"
+      - "Selected category title"
+      - "Two-column grid"
+      - "Content thumbnail / cover"
+      - "Content title"
+    interactions:
+      - id: "tap_direct_scripture_free"
+        trigger: "Free user taps content item"
+        result: "Open unified paywall"
+        destination_screen: "unified_paywall"
+        analytics_event: "books_paywall_triggered"
+      - id: "tap_direct_scripture_pro"
+        trigger: "Pro user taps content item"
+        result: "Open direct reader"
+        destination_screen: "non_book_reader"
+        analytics_event: "book_card_tapped"
+      - id: "tap_back"
+        trigger: "User taps back"
+        result: "Return to Books Home"
+
+  book_contents:
+    figma_node_id: "639:3947"
+    name: "Book Contents"
+    type: "book_detail_contents_screen"
+    access: "pro_only_in_mvp"
+    purpose: "Show structured contents for a major book after Pro access is confirmed."
+    visible_elements:
+      - "Book cover"
+      - "Book title"
+      - "Start Reading button"
+      - "Sub-book/Kanda list"
+      - "Chapter count metadata"
+    interactions:
+      - id: "tap_start_reading"
+        trigger: "Pro user taps Start Reading"
+        result: "Open reader at first/default chapter"
+        destination_screen: "book_reader"
+        analytics_event: "book_start_reading_tapped"
+      - id: "tap_sub_book_or_chapter"
+        trigger: "Pro user taps sub-book/kanda/chapter"
+        result: "Open selected chapter/content in reader"
+        destination_screen: "book_reader"
+        analytics_event: "book_chapter_selected"
+      - id: "tap_back"
+        trigger: "User taps back"
+        result: "Return to previous listing or Books Home"
+
+  book_reader:
+    figma_node_id: "620:3904"
+    name: "Book Reader"
+    type: "reader_screen"
+    access: "pro_only"
+    purpose: "Allow Pro users to read spiritual book chapters."
+    visible_elements:
+      - "Internal page top nav"
+      - "Chapter title"
+      - "Listen Audio button"
+      - "Long Hindi/Devanagari body text"
+      - "Previous button"
+      - "Next button"
+      - "Warm reading surface"
+      - "Aa / text-size control"
+      - "Chapter drawer control"
+    interactions:
+      - id: "tap_listen_audio"
+        trigger: "User taps Listen Audio"
+        result: "Start audio narration if audio_url exists"
+        analytics_event: "book_audio_listen_tapped"
+      - id: "tap_previous"
+        trigger: "User taps Previous"
+        result: "Open previous chapter if available"
+        analytics_event: "book_previous_tapped"
+      - id: "tap_next"
+        trigger: "User taps Next"
+        result: "Open next chapter if available"
+        analytics_event: "book_next_tapped"
+      - id: "tap_chapters_icon"
+        trigger: "User taps chapters/menu icon"
+        result: "Open chapters drawer"
+        destination_screen: "chapters_drawer"
+        analytics_event: "book_chapter_drawer_opened"
+      - id: "tap_font_size_icon"
+        trigger: "User taps Aa/text-size icon"
+        result: "Open font size adjustment overlay"
+        destination_screen: "font_size_adjust"
+        analytics_event: "book_font_settings_opened"
+
+  non_book_reader:
+    figma_node_id: "647:4133"
+    name: "Non-Book Reader"
+    type: "direct_reader_screen"
+    access: "pro_only"
+    purpose: "Allow direct reading for content categories that do not require book contents/sub-book hierarchy."
+    applies_to:
+      - "Chalisa"
+      - "Aarti"
+      - "Kavach"
+      - "Stotram"
+    visible_elements:
+      - "Internal page top nav"
+      - "Hindi/Devanagari body text"
+      - "Warm reading surface"
+    interactions:
+      - id: "scroll_content"
+        trigger: "User scrolls"
+        result: "Reader content scrolls vertically"
+      - id: "tap_back"
+        trigger: "User taps back"
+        result: "Return to category listing"
+
+  chapters_drawer:
+    figma_node_id: "637:4191"
+    name: "Chapters Drawer"
+    type: "reader_overlay"
+    access: "pro_only"
+    location: "inside_reader_only"
+    purpose: "Allow Pro users to jump between chapters while reading major books."
+    visible_elements:
+      - "Right-side drawer"
+      - "Book cover"
+      - "Book title"
+      - "Sub-book/kanda metadata"
+      - "Total chapters"
+      - "Chapter list"
+      - "Active chapter state"
+    interactions:
+      - id: "tap_chapter"
+        trigger: "User taps chapter row"
+        result: "Switch reader content to selected chapter"
+        analytics_event: "book_chapter_selected"
+
+  font_size_adjust:
+    figma_node_id: "637:4463"
+    name: "Font Size Adjust"
+    type: "reader_settings_overlay"
+    access: "pro_only"
+    location: "inside_reader_only"
+    purpose: "Allow users to change reading comfort."
+    persistence:
+      enabled: true
+      recommended_scope: "global_reader_preference"
+      recommended_storage: "local_storage"
+      condition: "if technically feasible"
+    visible_elements:
+      - "Text size overlay"
+      - "Slider"
+      - "Current font size value"
+      - "Reader content behind overlay"
+    interactions:
+      - id: "adjust_font_size_slider"
+        trigger: "User changes slider"
+        result: "Update reader body font size"
+        analytics_event: "book_font_size_changed"
+
+audio_rules:
+  mvp_available_for:
+    - "major_book"
+  mvp_not_required_for:
+    - "Chalisa"
+    - "Aarti"
+    - "Kavach"
+    - "Stotram"
+  data_dependency: "audio_url from CMS"
+  unavailable_behavior:
+    preferred: "Hide Listen Audio when audio_url is missing"
+    alternative: "Show disabled state only if design explicitly requires visible unavailable state"
+
+offline_rules:
+  mvp_preference: true
+  goal: "Support older/traveling users with poor connectivity."
+  recommended_mvp_scope: "cache_opened_text_content_only"
+  phase_2_scope:
+    - "manual_download"
+    - "audio_offline_cache"
+  behavior:
+    cache_hit: "Allow reading cached content offline"
+    cache_miss: "Show offline unavailable state with retry"
+
+cms_requirements:
+  source: "CMS"
+  required_fields:
+    - "content_id"
+    - "content_type"
+    - "category"
+    - "title"
+    - "cover_image_url"
+    - "author_or_source_metadata"
+    - "language"
+    - "sort_order"
+    - "pro_access_required"
+    - "offline_cache_eligible"
+  major_book_fields:
+    - "sub_book_or_kanda_list"
+    - "chapter_list"
+    - "chapter_content"
+    - "audio_url"
+  direct_scripture_fields:
+    - "content_body"
+
+states:
+  default:
+    description: "Content loads normally."
+  loading:
+    description: "Show loading skeletons for book/category/content lists."
+  empty:
+    description: "Show empty state if CMS returns no content for selected section."
+  error:
+    description: "Show retry state if CMS/content fetch fails."
+  offline_cache_hit:
+    description: "User can read already cached text content offline."
+  offline_cache_miss:
+    description: "Show offline unavailable state when requested content is not cached."
+  free_locked:
+    description: "Free user can browse but tapping content opens unified paywall."
+  pro_unlocked:
+    description: "Pro user can open contents/reader and use reader tools."
+  audio_unavailable:
+    description: "Hide Listen Audio or show disabled state if no audio URL exists."
+
+analytics_events:
+  - event_name: "books_tab_opened"
+    trigger: "User opens Books from bottom navigation"
+    required: true
+  - event_name: "books_home_viewed"
+    trigger: "Books Home rendered"
+    required: true
+  - event_name: "books_show_all_tapped"
+    trigger: "User taps Show All / View All"
+    required: true
+  - event_name: "books_all_listing_viewed"
+    trigger: "All Books listing rendered"
+    required: true
+  - event_name: "books_category_tapped"
+    trigger: "User taps category card"
+    required: true
+  - event_name: "books_category_viewed"
+    trigger: "Category listing rendered"
+    required: true
+  - event_name: "book_card_tapped"
+    trigger: "User taps book/content card"
+    required: true
+  - event_name: "books_paywall_triggered"
+    trigger: "Free user taps Pro reading content"
+    required: true
+  - event_name: "books_paywall_viewed"
+    trigger: "Unified paywall opens from Books"
+    required: true
+  - event_name: "book_contents_viewed"
+    trigger: "Pro user views Book Contents"
+    required: true
+  - event_name: "book_start_reading_tapped"
+    trigger: "Pro user taps Start Reading"
+    required: true
+  - event_name: "book_reader_opened"
+    trigger: "Reader opens"
+    required: true
+  - event_name: "book_audio_listen_tapped"
+    trigger: "User taps Listen Audio"
+    required: false
+  - event_name: "book_chapter_drawer_opened"
+    trigger: "User opens chapter drawer"
+    required: false
+  - event_name: "book_chapter_selected"
+    trigger: "User selects chapter"
+    required: false
+  - event_name: "book_font_settings_opened"
+    trigger: "User opens font size settings"
+    required: false
+  - event_name: "book_font_size_changed"
+    trigger: "User changes font size"
+    required: false
+  - event_name: "book_previous_tapped"
+    trigger: "User taps Previous"
+    required: false
+  - event_name: "book_next_tapped"
+    trigger: "User taps Next"
+    required: false
+  - event_name: "books_offline_cache_hit"
+    trigger: "Offline user opens cached content"
+    required: false
+  - event_name: "books_offline_cache_miss"
+    trigger: "Offline user tries uncached content"
+    required: false
+
+not_in_mvp:
+  - "Contextual Pro explanation before paywall"
+  - "Reading progress / Continue Reading"
+  - "Search inside Books"
+  - "Bookmark/save chapter"
+  - "Share quote"
+  - "Share chapter"
+  - "Manual book download"
+  - "Audio offline caching"
+
+qa_checks:
+  - "Books tab is accessible to free users."
+  - "Free users can browse Books Home, categories, and View All listing."
+  - "Free users tapping any book/content item card see unified paywall directly."
+  - "Pro users tapping major books open Book Contents."
+  - "Pro users tapping direct scripture items open Reader directly."
+  - "View All uses the same 2-column layout as category listing."
+  - "Major books and direct scripture content types are handled separately."
+  - "Listen Audio appears only for eligible major books with audio_url."
+  - "Font size preference is stored if technically feasible."
+  - "Offline cache works for already opened text content if technically feasible."
+  - "Hindi/Devanagari text is readable on 360px screen."
+  - "Reader controls do not overpower devotional content."
+  - "No contextual paywall explanation is required in MVP."
+
+handoff_readiness:
+  ready_for_dev: true
+  readiness_status: "ready_with_engineering_feasibility_checks"
+  remaining_dependencies:
+    - "CMS schema finalization"
+    - "Offline cache scope feasibility"
+    - "Font size local persistence feasibility"
+    - "Audio unavailable behavior"
+    - "Previous/Next first-last chapter behavior"

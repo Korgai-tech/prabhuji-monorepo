@@ -1,0 +1,15 @@
+{
+  "environment": "staging",
+  "apiUrl": "https://stage-prabhuji-api.krutyug.ai",
+  "eventsUrl": "https://api-monorepo-common-staging.krutyug.ai/events",
+  "eventsApiKey": "ZNuLYeO0V6xmFdwViNroS1kcJ1pcEGmqYZF8C9dP",
+  "privacyPolicyUrl": "https://krutyug.ai/privacy.html",
+  "termsOfServiceUrl": "https://krutyug.ai/terms.html",
+  "refundPolicyUrl": "https://krutyug.ai/pricing_policy.html",
+  "pricingPolicyUrl": "https://krutyug.ai/pricing_policy.html",
+  "dataDeletionUrl": "https://krutyug.ai/data_deletion.html",
+  "shareHost": "https://krutyug.ai",
+  "playStoreUrl": "https://play.google.com/store/apps/details?id=com.prabhuji.ai",
+  "referralBaseUrl": "https://api-monorepo-common-staging.krutyug.ai",
+  "referralTenantKey": "prabhuji.lwg64mQW.IFNTq10hjMpTfL1MPX4tik3_5LF2ZAWJpkRuD2zU2Qs"
+}

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Admin</title>
+
+    <!-- NO <base> TAG. It used to be hardcoded `/cms/` so the relative favicon
+         below resolved under the prefix, but a literal here cannot follow Vite's
+         `base` — which is now build-time configurable (see vite.config.mts), so
+         the root-served build would still have resolved every relative URL
+         against /cms/. Vite rebases root-relative public asset URLs itself: the
+         `/favicon.ico` below is emitted as `/cms/favicon.ico` or `/favicon.ico`
+         to match the build. react-router's basename reads
+         import.meta.env.BASE_URL and never depended on this tag. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

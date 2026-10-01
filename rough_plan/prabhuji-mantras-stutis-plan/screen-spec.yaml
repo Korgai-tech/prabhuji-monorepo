@@ -1,0 +1,604 @@
+design_execution_package:
+  app: "Prabhuji"
+  module: "Mantras & Stutis"
+  screen_or_flow: "Module Main Page, Show All Listing, Mantra Player, Counter, Playlist, Background Mini-player"
+  version: "v1.0"
+  status: "approved"
+  package_type: "module_wise_design_execution_package"
+  approval_required_before_export: false
+
+source:
+  figma_file_key: "ipSvV1FnmzvV8TK2Ig8Aiq"
+  figma_urls:
+    main_module_section: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=683-5220&t=TzCwzI6RZASLubyK-1"
+    main_page: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=425-4944&t=TzCwzI6RZASLubyK-1"
+    mantra_player: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=438-3074&t=TzCwzI6RZASLubyK-1"
+    show_all_listing: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=1066-3358&t=TzCwzI6RZASLubyK-1"
+  node_ids:
+    main_module_section: "683:5220"
+    main_page: "425:4944"
+    mantra_player: "438:3074"
+    show_all_listing: "1066:3358"
+  frame_names:
+    main_module_section: "Mantras & Stutis"
+    main_page: "Mantras & Stutis"
+    mantra_player: "Mantra Player"
+    show_all_listing: "Mantras & Stutis - Recently Played"
+
+product_intent:
+  purpose: "Let devotees discover and repeatedly listen to short mantra and stuti audio in a calm devotional environment."
+  primary_user_goal: "Find a mantra/stuti, play it repeatedly, and continue daily devotional listening."
+  primary_business_goal: "Convert high-intent devotional audio users to Pro and increase daily retention."
+  design_principle:
+    - "DP01: Devotional First, Feed Second"
+    - "DP02: Preserve Sacred Visual Dignity"
+    - "DP03: Calm Rituals, Clear Controls"
+    - "DP04: Simple Language, Readable Devanagari"
+    - "DP05: Pro as Added Devotional Value"
+    - "DP08: Lightweight, Readable, Small-Screen First"
+
+access_model:
+  free_user:
+    can_view:
+      - "Mantras & Stutis main page"
+      - "Main page discovery sections"
+      - "Show All listing pages as discovery"
+      - "Audio/deity/category card artwork and titles"
+    can_use:
+      - "Browse discovery surfaces"
+      - "Tap Show All to view listing"
+    cannot_use:
+      - "Open player"
+      - "Play audio"
+      - "Use repeat counter"
+      - "Use playlist playback"
+      - "Like mantra/stuti items"
+      - "Share mantra/stuti items"
+      - "Use mini-player/background playback"
+    paywall_triggers:
+      - trigger: "Tap any audio item on main page"
+        result: "Open unified paywall"
+        confidence: "confirmed"
+      - trigger: "Tap any deity card"
+        result: "Open unified paywall"
+        confidence: "confirmed"
+      - trigger: "Tap any category card"
+        result: "Open unified paywall"
+        confidence: "confirmed"
+      - trigger: "Tap any item inside Show All listing"
+        result: "Open unified paywall"
+        confidence: "confirmed"
+    should_not_show:
+      - "Paywall on module entry"
+      - "Lock badges on main page cards"
+      - "Lock badges on Show All listing cards"
+      - "Contextual paywall variants in Phase 1"
+  pro_user:
+    can_view:
+      - "All free discovery surfaces"
+      - "Show All listings"
+      - "Mantra Player"
+      - "Counter sheet"
+      - "Playlist bottom sheet"
+      - "Mini-player while audio is active"
+    can_use:
+      - "Stream audio"
+      - "Autoplay after explicit content tap"
+      - "Previous/play-pause/next controls"
+      - "Repeat counter"
+      - "Playlist selection"
+      - "Like/unlike"
+      - "Native share with deep link"
+      - "Background playback"
+    paywall_triggers: []
+    should_not_show:
+      - "Pro paywall inside this module"
+      - "Lock badges on content cards"
+      - "Payment prompts during active playback"
+
+screen_structure:
+  sections:
+    - id: "main_header"
+      name: "Main Page Header"
+      source: "Figma node 425:4944"
+      visible_elements:
+        - "Status bar"
+        - "Back arrow"
+        - "Title: Mantras & Stutis"
+      interactions:
+        - element: "Back arrow"
+          action: "tap"
+          result: "Return to previous screen, usually Home."
+          confidence: "confirmed"
+      rules:
+        - "Module entry never triggers paywall."
+        - "Use 360px baseline layout."
+
+    - id: "recently_played"
+      name: "Recently Played Mantras"
+      source: "Figma node 425:4944"
+      visible_elements:
+        - "Section title: Recently Played Mantras"
+        - "Show all"
+        - "Horizontal audio cards with artwork and truncated title"
+      interactions:
+        - element: "Audio card"
+          action: "tap as Pro user"
+          result: "Open player, start tapped item, use Recently Played order as playlist."
+          confidence: "confirmed"
+        - element: "Audio card"
+          action: "tap as free user"
+          result: "Open unified paywall."
+          confidence: "confirmed"
+        - element: "Show all"
+          action: "tap"
+          result: "Open Show All listing page for Recently Played."
+          confidence: "confirmed"
+      rules:
+        - "Use real user listening history for Pro users."
+        - "If no real history exists, hide this section."
+        - "Do not show fake Recently Played history."
+
+    - id: "deities"
+      name: "Mantras of Deities"
+      source: "Figma node 425:4944"
+      visible_elements:
+        - "Section title: Mantras of Deities"
+        - "Show all"
+        - "Horizontal deity cards with circular deity images"
+        - "Examples: Hanuman ji, Ram ji, Durga Ma, Ganesh Ji, Shri Krishna, Vishnu Ji, Lakshmi Ma, Radha Ma, Khatu Shyam, Saraswati Ma, Kali Ma"
+      interactions:
+        - element: "Deity card"
+          action: "tap as Pro user"
+          result: "Open player with first item from selected deity group; rest of group becomes playlist."
+          confidence: "confirmed"
+        - element: "Deity card"
+          action: "tap as free user"
+          result: "Open unified paywall."
+          confidence: "confirmed"
+        - element: "Show all"
+          action: "tap"
+          result: "Open reusable listing/grid page for deity collection, depending on CMS structure."
+          confidence: "partially_confirmed"
+      rules:
+        - "No dedicated deity detail page in Phase 1."
+        - "Use user-facing spelling Deities."
+
+    - id: "browse_categories"
+      name: "Browse Categories"
+      source: "Figma node 425:4944"
+      visible_elements:
+        - "Section title: Browse Categories"
+        - "Two-column category cards"
+        - "Categories: Peace, Wealth, Health, Success, Love & Relationship, Protection"
+      interactions:
+        - element: "Category card"
+          action: "tap as Pro user"
+          result: "Open player with first item from selected category; rest of category becomes playlist."
+          confidence: "confirmed"
+        - element: "Category card"
+          action: "tap as free user"
+          result: "Open unified paywall."
+          confidence: "confirmed"
+      rules:
+        - "No dedicated category detail page in Phase 1."
+        - "Keep category cards devotional and visually calm."
+
+    - id: "newly_added"
+      name: "Newly Added Mantras"
+      source: "Figma node 425:4944"
+      visible_elements:
+        - "Section title: Newly Added Mantras"
+        - "Show all"
+        - "Horizontal audio cards"
+      interactions:
+        - element: "Audio card"
+          action: "tap as Pro user"
+          result: "Open player, start tapped item, use Newly Added order as playlist."
+          confidence: "confirmed"
+        - element: "Audio card"
+          action: "tap as free user"
+          result: "Open unified paywall."
+          confidence: "confirmed"
+        - element: "Show all"
+          action: "tap"
+          result: "Open Show All listing page for Newly Added Mantras."
+          confidence: "confirmed"
+      rules:
+        - "Row content and order are CMS-controlled."
+
+    - id: "show_all_listing"
+      name: "Show All Listing"
+      source: "Figma node 1066:3358"
+      visible_elements:
+        - "Status bar"
+        - "Back arrow"
+        - "Dynamic title such as Recently Played"
+        - "Two-column grid"
+        - "Square artwork cards"
+        - "Item titles"
+      interactions:
+        - element: "Back arrow"
+          action: "tap"
+          result: "Return to source main page."
+          confidence: "confirmed"
+        - element: "Grid item"
+          action: "tap as Pro user"
+          result: "Open player, start tapped item, use listing order as playlist."
+          confidence: "confirmed"
+        - element: "Grid item"
+          action: "tap as free user"
+          result: "Open unified paywall."
+          confidence: "confirmed"
+      rules:
+        - "Reuse same listing pattern used for Aarti module."
+        - "Title must be dynamic for the source section."
+        - "Free users can view listing as discovery."
+        - "Do not show lock badges."
+
+    - id: "player"
+      name: "Mantra Player"
+      source: "Figma node 438:3074"
+      visible_elements:
+        - "Back arrow"
+        - "Counter pill"
+        - "Artwork"
+        - "Title"
+        - "Singer metadata"
+        - "Devanagari mantra text"
+        - "Like action and count"
+        - "Share action and count"
+        - "Player controls"
+        - "Next track card"
+      interactions:
+        - element: "Player screen"
+          action: "open after explicit Pro user item tap"
+          result: "Start playback automatically."
+          confidence: "confirmed"
+        - element: "Back arrow"
+          action: "tap"
+          result: "Return to prior surface; keep active audio in mini-player if playing."
+          confidence: "confirmed"
+        - element: "Play/pause"
+          action: "tap"
+          result: "Toggle current audio playback."
+          confidence: "confirmed"
+        - element: "Previous control"
+          action: "tap"
+          result: "Start previous item in playlist and reset counter."
+          confidence: "confirmed"
+        - element: "Next control"
+          action: "tap"
+          result: "Start next item in playlist and reset counter."
+          confidence: "confirmed"
+        - element: "Like"
+          action: "tap"
+          result: "Toggle like state and update count."
+          confidence: "confirmed"
+        - element: "Share"
+          action: "tap"
+          result: "Open native Android share sheet with text and deep link; do not share raw audio file."
+          confidence: "confirmed"
+        - element: "Counter pill"
+          action: "tap"
+          result: "Open counter bottom sheet."
+          confidence: "confirmed"
+        - element: "Next card area"
+          action: "tap"
+          result: "Open playlist bottom sheet."
+          confidence: "confirmed"
+        - element: "Next card play icon"
+          action: "tap"
+          result: "Start next item directly."
+          confidence: "confirmed"
+      rules:
+        - "Player is Pro-only."
+        - "Use previous/next track controls, not 10-second seek."
+        - "Preserve Devanagari line breaks."
+        - "If mantra text is long, scroll content instead of truncating sacred text."
+
+listing_behavior:
+  show_all:
+    pattern_source: "Figma node 1066:3358"
+    confirmed: true
+    reusable_for:
+      - "Recently Played"
+      - "Newly Added Mantras"
+      - "Other Mantras & Stutis sections if CMS provides enough items"
+    free_user_behavior: "Can open listing as discovery; tapping item opens unified paywall."
+    pro_user_behavior: "Can tap item to open player with listing order as playlist."
+  card_behavior:
+    title_truncation: "Allowed visually, but full title must be available to accessibility and player."
+    tap_target_minimum: 44
+    lock_badges_phase_1: false
+
+player_behavior:
+  entry:
+    autoplay_after_explicit_tap: true
+    autoplay_on_module_entry: false
+    confidence: "confirmed"
+  controls:
+    previous_track: true
+    play_pause: true
+    next_track: true
+    seek_backward_10_seconds: false
+    seek_forward_10_seconds: false
+    confidence: "confirmed"
+  metadata:
+    show_title: true
+    show_singer: true
+    show_composer_if_available: false
+    show_devanagari_text: true
+    preserve_text_line_breaks: true
+  like:
+    pro_only: true
+    optimistic_update: true
+    on_failure: "Revert like state and show soft error."
+    confidence: "partially_confirmed"
+  share:
+    pro_only: true
+    native_share_sheet: true
+    whatsapp_is_key_destination: true
+    share_raw_audio_file: false
+    payload_fields:
+      - "title"
+      - "short devotional message"
+      - "deep link"
+    confidence: "confirmed"
+
+counter_behavior:
+  phase_1: true
+  default_target: 7
+  available_targets:
+    - 7
+    - 11
+    - 21
+    - 108
+    - 1008
+  selected_count_meaning: "Play the current audio this many full times."
+  progress_format: "completed_count/target times"
+  starts_at: 0
+  increment_rule: "Increment by 1 after each full playback completion."
+  target_completion_result: "Automatically play next item in playlist."
+  open_counter_sheet: "Tap counter pill."
+  selection_behavior: "Tapping a radio option immediately selects and saves that option."
+  continue_button_required: false
+  change_while_playing: "Reset completed count to 0 and update target immediately."
+  preference_persistence: "Remember last selected target if technically simple."
+  confidence: "confirmed"
+
+playlist_behavior:
+  source_rules:
+    from_recently_played: "Use real history order."
+    from_deity: "Use selected deity group order from CMS."
+    from_category: "Use selected category group order from CMS."
+    from_newly_added: "Use CMS Newly Added order."
+    from_show_all_listing: "Use visible listing order."
+  open_playlist: "Tap Next card area."
+  direct_next_play: "Tap play icon on Next card."
+  item_tap_result: "Start selected item and reset counter to 0/default_target or 0/current_selected_target."
+  after_repeat_target_completed: "Auto-play next item."
+  end_of_playlist_behavior: "Stop playback and keep player on last item unless CMS supplies loop behavior in future."
+  confidence: "confirmed"
+
+background_audio_behavior:
+  phase_1: true
+  shared_with: "Aarti & Bhajans mini-player/audio architecture"
+  continue_when_app_backgrounded: true
+  continue_when_device_locked: true
+  mini_player_required: true
+  mini_player_content:
+    - "Current item title"
+    - "Thumbnail/artwork if space allows"
+    - "Play/pause"
+    - "Return to player on tap"
+  audio_focus_rules:
+    on_call_or_external_audio_focus_loss: "Pause playback."
+    resume_rule: "Resume on explicit user play tap unless platform behavior safely supports auto-resume."
+  confidence: "confirmed"
+
+data_requirements:
+  cms:
+    controls_content: true
+    content_objects:
+      mantra_audio_item:
+        required_fields:
+          - "id"
+          - "title"
+          - "type: mantra | stuti"
+          - "artwork_url"
+          - "audio_url"
+          - "duration_seconds"
+          - "singer_name"
+          - "mantra_text"
+          - "language"
+          - "deity_ids"
+          - "category_ids"
+          - "deep_link_url"
+          - "is_active"
+          - "sort_order"
+        optional_fields:
+          - "composer_name"
+          - "short_share_text"
+          - "transliteration_text"
+          - "description"
+          - "like_count"
+          - "share_count"
+          - "created_at"
+      deity:
+        required_fields:
+          - "id"
+          - "display_name"
+          - "image_url"
+          - "sort_order"
+          - "is_active"
+      category:
+        required_fields:
+          - "id"
+          - "display_name"
+          - "image_url"
+          - "background_color_or_token"
+          - "sort_order"
+          - "is_active"
+      homepage_section:
+        required_fields:
+          - "id"
+          - "title"
+          - "section_type: recently_played | deities | categories | newly_added | custom"
+          - "layout_type: horizontal_cards | deity_row | category_grid"
+          - "items"
+          - "show_all_enabled"
+          - "sort_order"
+          - "is_active"
+    user_generated_or_user_specific_data:
+      recently_played:
+        source: "Local/backend user listening history"
+        required_fields:
+          - "user_id"
+          - "item_id"
+          - "last_played_at"
+          - "last_progress_optional"
+      likes:
+        source: "User profile/backend"
+        required_fields:
+          - "user_id"
+          - "item_id"
+          - "liked"
+      counter_preference:
+        source: "Local storage or user profile"
+        required_fields:
+          - "user_id_optional"
+          - "last_selected_repeat_target"
+
+states:
+  loading:
+    main_page: "Show lightweight skeleton rows or placeholders. Do not block loaded sections while other sections load."
+    listing: "Show grid skeleton."
+    player: "Show player loading state until audio URL is ready."
+  empty:
+    recently_played: "Hide section if no real history exists."
+    section_empty: "Hide individual empty sections."
+    all_sections_empty: "Show empty state with retry and back affordance."
+    recommended_copy: "Mantras abhi uplabdh nahi hain. Kripya thodi der baad phir dekhein."
+  error:
+    cms_error: "Show retry if main CMS request fails."
+    partial_section_error: "Show remaining sections and hide failed section."
+    audio_error: "Show soft error and keep user on player."
+    recommended_audio_error_copy: "Audio play nahi ho paya. Kripya phir try karein."
+    like_error: "Revert optimistic like update and show soft error."
+  partial_failure:
+    artwork_missing: "Use devotional placeholder artwork."
+    singer_missing: "Hide singer metadata line."
+    mantra_text_missing: "Hide text area; keep audio player usable."
+    next_item_audio_failure: "Skip to next available item if possible; otherwise stop playback and show retry."
+  offline:
+    no_cached_data: "Show offline message with retry."
+    active_buffered_audio: "Continue buffered playback if possible."
+    downloads: "Not supported in Phase 1."
+  background_interruption:
+    audio_focus_loss: "Pause playback for call or external audio focus loss."
+    resume: "Require explicit user action unless platform-safe auto-resume is implemented."
+
+analytics_events:
+  - event_name: "mantras_module_opened"
+    trigger: "User opens Mantras & Stutis module."
+    required: true
+  - event_name: "mantras_section_show_all_tapped"
+    trigger: "User taps Show All in any section."
+    required: true
+  - event_name: "mantras_listing_opened"
+    trigger: "Show All listing page opens."
+    required: true
+  - event_name: "mantras_item_tapped"
+    trigger: "User taps an audio item on main page or listing."
+    required: true
+  - event_name: "mantras_deity_tapped"
+    trigger: "User taps a deity card."
+    required: true
+  - event_name: "mantras_category_tapped"
+    trigger: "User taps a category card."
+    required: true
+  - event_name: "mantras_paywall_triggered"
+    trigger: "Free user taps playable content or an item that would open player."
+    required: true
+  - event_name: "mantras_player_opened"
+    trigger: "Pro user opens player."
+    required: true
+  - event_name: "mantras_audio_started"
+    trigger: "Audio playback starts."
+    required: true
+  - event_name: "mantras_audio_paused"
+    trigger: "User pauses audio."
+    required: false
+  - event_name: "mantras_audio_completed_once"
+    trigger: "One full playback loop completes."
+    required: true
+  - event_name: "mantras_repeat_target_selected"
+    trigger: "User selects 7, 11, 21, 108, or 1008 in counter sheet."
+    required: true
+  - event_name: "mantras_repeat_target_completed"
+    trigger: "Current item reaches selected repeat target."
+    required: true
+  - event_name: "mantras_playlist_opened"
+    trigger: "User opens playlist bottom sheet."
+    required: true
+  - event_name: "mantras_playlist_item_selected"
+    trigger: "User selects item from playlist."
+    required: true
+  - event_name: "mantras_next_item_autoplayed"
+    trigger: "Repeat target completes and the next playlist item starts automatically."
+    required: true
+  - event_name: "mantras_like_toggled"
+    trigger: "User likes or unlikes an item."
+    required: false
+  - event_name: "mantras_share_tapped"
+    trigger: "User taps share."
+    required: true
+  - event_name: "mantras_background_playback_started"
+    trigger: "Audio continues after app background or device lock."
+    required: false
+  - event_name: "mantras_mini_player_tapped"
+    trigger: "User taps mini-player to return to player."
+    required: false
+  - event_name: "mantras_audio_error"
+    trigger: "Audio fails to load or play."
+    required: true
+
+qa_checks:
+  - "Free users can open the Mantras & Stutis main page without seeing a paywall."
+  - "Free users see no lock badges on Mantras & Stutis discovery cards."
+  - "Free users tapping an audio item on the main page open the unified paywall."
+  - "Free users tapping a deity card open the unified paywall."
+  - "Free users tapping a category card open the unified paywall."
+  - "Free users can open a Show All listing as discovery."
+  - "Free users tapping any Show All listing item open the unified paywall."
+  - "Pro users tapping an audio item open the player and playback starts automatically."
+  - "Pro users tapping a deity open the player with the first item from that deity group."
+  - "Pro users tapping a category open the player with the first item from that category."
+  - "The selected group order becomes the playlist."
+  - "Recently Played uses real user listening history."
+  - "Recently Played is hidden when no real listening history exists."
+  - "The default counter target is 7."
+  - "The counter options are exactly 7, 11, 21, 108, and 1008 in Phase 1."
+  - "Tapping a counter radio option immediately saves the selected target."
+  - "Changing the repeat target while playing resets completed count to 0."
+  - "The counter increments only after a full audio playback completion."
+  - "When the repeat target completes, the next playlist item starts automatically."
+  - "Player controls perform previous track, play/pause, and next track."
+  - "Player controls do not perform 10-second seek in Phase 1."
+  - "Tapping the Next card area opens the playlist bottom sheet."
+  - "Tapping the play icon on the Next card starts the next item directly."
+  - "Share opens the native Android share sheet."
+  - "Share payload does not include the raw audio file in Phase 1."
+  - "Background playback continues when the app is backgrounded, subject to platform rules."
+  - "The shared mini-player appears when audio is active outside the full player."
+  - "Devanagari mantra text preserves CMS line breaks."
+  - "Long mantra text scrolls instead of being truncated."
+  - "If artwork fails, a devotional placeholder is shown."
+  - "If singer metadata is missing, the singer line is hidden."
+  - "If audio fails, the player shows a soft retry/error state."
+
+handoff_readiness:
+  ready_for_dev_discussion: true
+  ready_for_final_build: true
+  remaining_questions_file: "open-questions.yaml"

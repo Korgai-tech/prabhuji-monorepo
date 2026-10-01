@@ -1,0 +1,31 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/api"
+    },
+    {
+      "path": "./apps/events"
+    },
+    {
+      "path": "./packages/api-client"
+    },
+    {
+      "path": "./apps/admin"
+    },
+    {
+      "path": "./apps/admin-e2e"
+    },
+    {
+      "path": "./packages/kuldevta-registry"
+    },
+    {
+      "path": "./packages/media-profiles"
+    },
+    {
+      "path": "./apps/media-optimizer"
+    }
+  ]
+}

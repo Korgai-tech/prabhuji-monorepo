@@ -1,0 +1,523 @@
+design_execution_package:
+  app: "Prabhuji"
+  module: "Horoscope"
+  screen_or_flow: "Module Spec"
+  version: "v1.0"
+  status: "approved"
+  package_type: "module_wise_design_execution_package"
+  approval_required_before_export: false
+
+source:
+  figma_file_key: "ipSvV1FnmzvV8TK2Ig8Aiq"
+  figma_urls:
+    main_module_section: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=392-3149&t=TzCwzI6RZASLubyK-1"
+    horoscope_main_tab: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=371-3796&t=TzCwzI6RZASLubyK-1"
+    result_header_tts_control: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=387-2491&t=TzCwzI6RZASLubyK-1"
+  node_ids:
+    main_module_section: "392:3149"
+    horoscope_main_tab: "371:3796"
+    result_header_tts_control: "387:2491"
+    unified_paywall: "493:3349"
+    bottom_navigation: "765:6549"
+  frame_names:
+    - "Horoscope"
+    - "Basic Nav"
+
+product_intent:
+  purpose: "Let devotees choose a zodiac sign and receive daily horoscope guidance in their app-level chosen language."
+  primary_user_goal: "Choose a zodiac sign and read or listen to today's horoscope."
+  primary_business_goal: "Make Horoscope a Pro-only daily value feature while allowing free users to discover the zodiac grid before paywall."
+  design_principle:
+    - "DP04: Simple Language, Readable Devanagari"
+    - "DP05: Pro as Added Devotional Value"
+    - "DP06: Clear Value Before Payment"
+    - "DP07: Make Every Day Spiritually Relevant"
+    - "DP08: Lightweight, Readable, Small-Screen First"
+
+access_model:
+  free_user:
+    can_view:
+      - "Horoscope bottom nav tab"
+      - "Today’s Horoscope main screen"
+      - "Current date"
+      - "All 12 zodiac sign cards"
+    can_use:
+      - "Tap zodiac sign to express intent"
+    paywall_triggers:
+      - trigger: "free_user_taps_zodiac_sign"
+        result: "open_unified_prabhuji_vip_paywall"
+        confidence: "confirmed"
+    should_not_show:
+      - "Lock badges on zodiac cards"
+      - "Pro labels on zodiac cards"
+      - "Horoscope result text before paywall"
+      - "TTS result playback before paywall"
+      - "Paywall on Horoscope tab entry"
+  pro_user:
+    can_view:
+      - "Horoscope main screen"
+      - "Daily horoscope result flow"
+      - "CMS/admin-configured horoscope steps"
+    can_use:
+      - "Select any zodiac sign"
+      - "Read result text"
+      - "Listen to TTS narration"
+      - "Mute/unmute TTS"
+      - "Use Next and Finish"
+      - "Auto-advance after TTS finishes"
+    paywall_triggers: []
+    should_not_show:
+      - "Paywall on zodiac tap"
+      - "Lock badges on zodiac cards"
+
+screen_structure:
+  sections:
+    - id: "horoscope_bottom_nav_entry"
+      name: "Horoscope bottom navigation entry"
+      source: "Figma node 371:3796 and app bottom navigation node 765:6549"
+      visible_elements:
+        - "Home tab"
+        - "Status tab"
+        - "Mandir tab"
+        - "Horoscope tab active"
+        - "Books tab"
+      interactions:
+        - element: "Horoscope tab"
+          action: "tap"
+          result: "open Horoscope main screen without paywall"
+          confidence: "confirmed"
+      rules:
+        - "Bottom nav contains exactly five items."
+        - "Bottom nav does not directly trigger paywall."
+        - "Horoscope tab uses active Brand/400 styling."
+
+    - id: "horoscope_main_header"
+      name: "Main screen header"
+      source: "Figma node 371:3796"
+      visible_elements:
+        - "Status bar"
+        - "Title: Today’s Horoscope"
+        - "Date, example: 15 June, 2026"
+      interactions: []
+      rules:
+        - "Date should reflect the current IST daily horoscope date."
+        - "Header copy should be localized if localization is supported for the selected app language."
+
+    - id: "zodiac_selection_grid"
+      name: "Zodiac selection grid"
+      source: "Figma node 371:3796"
+      visible_elements:
+        - "Aries card"
+        - "Taurus card"
+        - "Gemini card"
+        - "Cancer card"
+        - "Leo card"
+        - "Virgo card"
+        - "Libra card"
+        - "Scorpio card"
+        - "Sagittarius card"
+        - "Capricorn card"
+        - "Aquarius card"
+        - "Pisces card"
+      interactions:
+        - element: "Zodiac card"
+          action: "tap by free user"
+          result: "open unified Pro paywall"
+          confidence: "confirmed"
+        - element: "Zodiac card"
+          action: "tap by Pro user"
+          result: "open daily horoscope result flow for selected zodiac"
+          confidence: "confirmed"
+      rules:
+        - "Do not show lock badges on zodiac cards."
+        - "Use corrected labels: Sagittarius and Capricorn."
+        - "Cards should remain clear and tappable on 360px Android baseline."
+        - "The 12 zodiac signs can be locally known but display copy/assets may be CMS-controlled."
+
+    - id: "result_nav_header"
+      name: "Result flow header"
+      source: "Figma nodes 392:3149 and 387:2491"
+      visible_elements:
+        - "Back arrow"
+        - "Selected zodiac icon"
+        - "Selected zodiac name"
+        - "Date"
+        - "TTS mute/unmute icon"
+      interactions:
+        - element: "Back arrow"
+          action: "tap"
+          result: "stop active TTS and return to Horoscope main screen"
+          confidence: "confirmed"
+        - element: "TTS icon"
+          action: "tap when unmuted"
+          result: "mute TTS for the current result session"
+          confidence: "confirmed"
+        - element: "TTS icon"
+          action: "tap when muted"
+          result: "unmute TTS and allow TTS auto-start behavior to continue"
+          confidence: "confirmed"
+      rules:
+        - "TTS icon is mute/unmute, not replay."
+        - "Header should stay readable over the video background."
+
+    - id: "result_video_background"
+      name: "Astrology video background"
+      source: "Figma node 392:3149"
+      visible_elements:
+        - "Dark astrology/star background video"
+        - "Static fallback image when video cannot play"
+      interactions: []
+      rules:
+        - "Use a lightweight compressed silent looping video."
+        - "Video starts when result flow opens."
+        - "Video loops silently while result flow is active."
+        - "Video stops/releases when user exits result flow."
+        - "Use static fallback for low-end devices, slow network, video load failure, or performance issues."
+
+    - id: "result_step_card"
+      name: "Configurable horoscope step card"
+      source: "Figma node 392:3149"
+      visible_elements:
+        - "Step title pill"
+        - "Decorative bordered card"
+        - "Step result text"
+      interactions: []
+      rules:
+        - "Result steps are CMS/admin-configured."
+        - "The 8 visible Figma sections are examples/default configuration, not hardcoded app logic."
+        - "Only enabled steps are shown."
+        - "Step order follows CMS/admin configuration."
+        - "Content must use the user's app-level selected language."
+
+    - id: "result_bottom_actions"
+      name: "Result flow bottom actions"
+      source: "Figma node 392:3149"
+      visible_elements:
+        - "Next button"
+        - "Finish button on final step"
+      interactions:
+        - element: "Next button"
+          action: "tap while TTS is speaking"
+          result: "stop current speech, open next enabled step, and start TTS for next step if unmuted"
+          confidence: "confirmed"
+        - element: "Next button"
+          action: "tap while TTS is not speaking"
+          result: "open next enabled step and start TTS if unmuted"
+          confidence: "confirmed"
+        - element: "TTS completion"
+          action: "automatic"
+          result: "auto-advance to next enabled step"
+          confidence: "confirmed"
+        - element: "Finish button"
+          action: "tap"
+          result: "stop TTS and return to Horoscope main screen"
+          confidence: "confirmed"
+      rules:
+        - "Next remains visible even when auto-advance is enabled."
+        - "Final enabled step uses Finish instead of Next."
+        - "If TTS is muted, user advances manually with Next."
+
+horoscope_flow_behavior:
+  mode:
+    phase_1_supported_modes:
+      - "daily_horoscope"
+    future_modes_phase_2:
+      - "weekly_horoscope"
+      - "monthly_horoscope"
+      - "personalized_horoscope"
+    confidence: "confirmed"
+  daily_refresh:
+    timezone: "IST"
+    result_stability: "same result per zodiac, date, and language in Phase 1"
+    confidence: "confirmed"
+  step_configuration:
+    controlled_by: "CMS/admin"
+    supports_add_step: true
+    supports_remove_step: true
+    supports_rename_step: true
+    supports_reorder_step: true
+    supports_enable_disable_step: true
+    hardcode_visible_8_steps: false
+    confidence: "confirmed"
+  default_example_steps_from_figma:
+    - "Namaste"
+    - "A good time today"
+    - "Be careful"
+    - "Work and money"
+    - "Health care"
+    - "Today's solution"
+    - "Lucky number"
+    - "Lucky colour"
+  completion_behavior:
+    final_step_cta: "Finish"
+    finish_result: "return_to_horoscope_main_screen"
+    confidence: "confirmed"
+
+paywall_behavior:
+  paywall_type: "unified_prabhuji_vip_membership_paywall"
+  paywall_node_id: "493:3349"
+  trigger: "free_user_taps_zodiac_sign"
+  not_triggered_on:
+    - "Horoscope tab open"
+    - "Horoscope main screen load"
+    - "Viewing zodiac grid"
+  purchase_success_result: "continue_to_selected_zodiac_result_flow"
+  purchase_cancel_or_failure_result: "return_to_horoscope_zodiac_grid"
+  confidence: "confirmed"
+
+language_behavior:
+  source_of_truth: "app_level_language_selected_during_onboarding_or_changed_in_settings"
+  result_text_language: "same_as_app_level_language"
+  tts_language: "same_as_result_text_language"
+  fallback_hierarchy: "open_question"
+  confidence: "confirmed"
+
+tts_behavior:
+  required_in_phase_1: true
+  auto_start_each_section: true
+  speaks:
+    - "step heading"
+    - "step result text"
+  auto_advance_after_tts_finish: true
+  user_control:
+    icon_behavior: "mute_unmute"
+    replay: false
+    pause_resume: false
+    speed_control: false
+  on_next_tap_while_speaking: "stop current speech, move to next section, start next section TTS if unmuted"
+  on_back_tap: "stop active TTS and return to main screen"
+  on_finish_tap: "stop active TTS and return to main screen"
+  muted_behavior: "do not auto-play TTS for subsequent sections in the same result session"
+  unmuted_behavior: "resume auto-start TTS behavior for the active or next section"
+  unsupported_language_behavior: "show text and fail gracefully; do not block result reading"
+  confidence: "confirmed"
+
+video_background_behavior:
+  media_type: "silent_looping_video"
+  performance_requirement: "lightweight_compressed_asset"
+  fallback: "static_image"
+  fallback_conditions:
+    - "low_end_device"
+    - "slow_network"
+    - "video_load_failure"
+    - "performance_issue"
+  should_not:
+    - "play audio"
+    - "reduce text readability"
+    - "block result flow if video fails"
+  confidence: "confirmed"
+
+content_generation_rules:
+  engine_source:
+    status: "open"
+    options:
+      - "AI model trained/configured for horoscope"
+      - "third-party horoscope API"
+    decision_owner: "Business stakeholders"
+    implementation_owner: "Engineering/Tech"
+  phase_1_personalization: "none"
+  result_granularity: "same zodiac/date/language result for all users"
+  content_safety:
+    prohibit:
+      - "medical cures"
+      - "financial guarantees"
+      - "legal guarantees"
+      - "fear-based remedies"
+      - "expensive rituals"
+      - "panic-inducing warnings"
+      - "claims of guaranteed harm"
+    allow:
+      - "simple devotional suggestions"
+      - "mantra or prayer suggestions"
+      - "calm reflection"
+      - "simple offering suggestions"
+      - "lucky colour"
+      - "lucky number"
+  confidence: "confirmed_except_engine_source"
+
+data_requirements:
+  cms:
+    zodiac_sign:
+      fields:
+        - "zodiac_id"
+        - "display_name"
+        - "localized_display_name"
+        - "icon_asset"
+        - "sort_order"
+        - "enabled"
+    horoscope_mode:
+      fields:
+        - "mode_id"
+        - "mode_name"
+        - "enabled"
+        - "phase"
+      phase_1_allowed_values:
+        - "daily_horoscope"
+    horoscope_step_config:
+      fields:
+        - "step_id"
+        - "mode_id"
+        - "title"
+        - "localized_title"
+        - "order"
+        - "enabled"
+        - "content_type"
+        - "prompt_or_provider_mapping"
+        - "tts_enabled"
+        - "safety_category"
+    daily_horoscope_result:
+      fields:
+        - "result_id"
+        - "zodiac_id"
+        - "mode_id"
+        - "date_ist"
+        - "language_code"
+        - "steps"
+        - "generated_or_provider_timestamp"
+        - "provider_name"
+        - "content_safety_status"
+      step_fields:
+        - "step_id"
+        - "title"
+        - "display_text"
+        - "tts_text"
+        - "order"
+        - "content_type"
+    media_assets:
+      fields:
+        - "result_background_video_url"
+        - "result_background_static_fallback_url"
+        - "zodiac_icon_assets"
+        - "asset_version"
+    language_settings:
+      fields:
+        - "app_language_code"
+        - "tts_language_code"
+        - "tts_voice_available"
+  provider_interface:
+    required_inputs:
+      - "zodiac_id"
+      - "date_ist"
+      - "language_code"
+      - "mode_id"
+      - "enabled_step_config"
+    required_outputs:
+      - "step_id"
+      - "step_title"
+      - "step_display_text"
+      - "step_tts_text"
+      - "content_safety_status"
+
+states:
+  loading_main_screen:
+    description: "Show Horoscope screen shell while zodiac config/assets load if needed."
+  loading_result:
+    description: "Show loading state after Pro user selects zodiac and before horoscope content is ready. Do not start TTS until content is ready."
+  free_user_paywall:
+    description: "Free user tapping zodiac sign opens unified paywall. Purchase success resumes selected zodiac result."
+  empty_step_configuration:
+    description: "If CMS returns no enabled steps, show friendly error with Retry and log configuration issue."
+  api_or_generation_error:
+    description: "Show friendly error with Retry. Keep selected zodiac and date context. Do not play TTS."
+  video_background_fallback:
+    description: "If video fails or device/network is unsuitable, use static image fallback and continue the result flow."
+  unsupported_tts_language:
+    description: "Show translated text and fail gracefully if TTS voice is unavailable. Do not block reading."
+  offline_without_cache:
+    description: "Show offline-friendly retry state if no current result can be loaded."
+  partial_failure_text_loaded_tts_failed:
+    description: "Continue showing text and allow manual navigation if TTS fails."
+  partial_failure_video_failed:
+    description: "Use static fallback image and continue text/TTS experience."
+  muted_tts:
+    description: "TTS is muted for the current result session and does not auto-play. User advances manually."
+
+analytics_events:
+  - event_name: "horoscope_tab_opened"
+    trigger: "User opens Horoscope tab from bottom navigation."
+    required: true
+  - event_name: "horoscope_zodiac_tapped"
+    trigger: "User taps a zodiac sign card."
+    required: true
+  - event_name: "horoscope_paywall_shown"
+    trigger: "Free user taps a zodiac sign and unified paywall opens."
+    required: true
+  - event_name: "horoscope_purchase_success_returned"
+    trigger: "User purchases Pro from Horoscope paywall and returns to selected zodiac result."
+    required: true
+  - event_name: "horoscope_result_loaded"
+    trigger: "Daily horoscope result successfully loads for selected zodiac/date/language."
+    required: true
+  - event_name: "horoscope_section_viewed"
+    trigger: "A configured horoscope step becomes visible."
+    required: true
+  - event_name: "horoscope_tts_started"
+    trigger: "TTS starts for a section."
+    required: true
+  - event_name: "horoscope_tts_muted"
+    trigger: "User taps TTS icon to mute."
+    required: true
+  - event_name: "horoscope_tts_unmuted"
+    trigger: "User taps TTS icon to unmute."
+    required: true
+  - event_name: "horoscope_next_tapped"
+    trigger: "User taps Next on a result section."
+    required: true
+  - event_name: "horoscope_auto_advanced"
+    trigger: "Flow auto-advances after TTS finishes."
+    required: true
+  - event_name: "horoscope_finish_tapped"
+    trigger: "User taps Finish on the final configured step."
+    required: true
+  - event_name: "horoscope_retry_tapped"
+    trigger: "User taps Retry from an error state."
+    required: true
+  - event_name: "horoscope_error_shown"
+    trigger: "Any horoscope loading/generation/configuration error state is shown."
+    required: true
+  - event_name: "horoscope_video_fallback_used"
+    trigger: "Static fallback image is used instead of video background."
+    required: false
+
+qa_checks:
+  - "Free users can open the Horoscope tab without seeing a paywall."
+  - "Free users can see all 12 zodiac cards on the main Horoscope screen."
+  - "No zodiac card shows a lock badge or Pro label."
+  - "Free users tapping any zodiac sign see the unified Prabhuji VIP paywall."
+  - "Free users who close the paywall return to the Horoscope zodiac grid."
+  - "Users who purchase Pro from the Horoscope paywall continue into the selected zodiac result flow."
+  - "Pro users tapping any zodiac sign open the result flow without paywall."
+  - "The implementation displays Sagittarius, not Saittarius."
+  - "The implementation displays Capricorn, not Capricon."
+  - "The result flow uses CMS/admin-configured steps and does not hardcode exactly 8 steps."
+  - "Disabling a step in CMS prevents that step from appearing in the result flow."
+  - "Changing CMS step order changes the order shown in the result flow."
+  - "Adding an enabled CMS step makes it appear in the result flow without an app release."
+  - "Removing or disabling all steps shows a friendly error with Retry."
+  - "TTS auto-starts when an unmuted Pro user lands on a result section."
+  - "TTS reads the section heading and result text."
+  - "Tapping Next while TTS is speaking stops current speech before opening the next section."
+  - "After TTS finishes, the flow auto-advances to the next enabled step."
+  - "The Next button remains visible even when auto-advance is enabled."
+  - "The final enabled step shows Finish instead of Next."
+  - "Tapping Finish stops TTS and returns to the Horoscope main screen."
+  - "The TTS icon mutes and unmutes speech; it does not replay speech."
+  - "When muted, TTS does not auto-play for subsequent sections in the same result session."
+  - "The astrology video background loops silently during the result flow."
+  - "If the video background fails, a static fallback image is shown and the horoscope result remains usable."
+  - "Horoscope result text uses the app-level language selected during onboarding or settings."
+  - "Daily horoscope refresh uses IST."
+  - "Two users selecting the same zodiac/date/language receive the same Phase 1 result."
+  - "If horoscope generation or API loading fails, a friendly error with Retry appears."
+  - "Horoscope content does not contain medical cures, financial guarantees, fear-based remedies, expensive rituals, or panic-inducing warnings."
+
+handoff_readiness:
+  ready_for_dev_discussion: true
+  ready_for_final_build: false
+  remaining_questions_file: "open-questions.yaml"
+  notes:
+    - "Package is approved."
+    - "Final build requires business/engineering decision on horoscope engine source."
+    - "CMS/admin-configurable steps are required for Phase 1."
+    - "TTS icon behavior is confirmed as mute/unmute."
+    - "Result background is confirmed as video with static fallback."

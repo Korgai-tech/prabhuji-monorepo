@@ -1,0 +1,19 @@
+-- Add `cta_content_id` to `home_feed_items` — a nullable UUID side-car to
+-- `cta_destination_value`.
+--
+-- Why: `cta_destination_value` on auto-generated content cards holds a slug
+-- (deterministic, human-readable, stable across id churn — good for URLs and
+-- share links). But the mobile app's per-content deep-link routes
+-- (`/aarti-bhajans/audio/:audioId`, `/mantras/audio/:itemId`) and the
+-- downstream `GET /aarti/audios/:id` / `GET /mantras/items/:id` lookups do
+-- strict `WHERE id = …` with no slug fallback, so passing a slug 404s and the
+-- "Play Aarti" / "Play Mantra" CTAs fail to open the play screen for Pro
+-- users. This column carries the underlying content UUID alongside the slug,
+-- so the app can build the correct by-id URL.
+--
+-- Additive: existing rows get NULL. `upsertContentFeedCard` fills it on the
+-- next content publish; the app treats NULL as "no by-id target" and opens
+-- the owning module instead (safe fallback, no 404).
+--
+-- Reversible: ALTER TABLE home_feed_items DROP COLUMN cta_content_id.
+ALTER TABLE "home_feed_items" ADD COLUMN "cta_content_id" UUID;

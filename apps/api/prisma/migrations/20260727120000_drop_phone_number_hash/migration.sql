@@ -1,0 +1,33 @@
+-- Drop `phone_number_hash` — the contract half of the expand/contract begun in
+-- 20260722120000_add_login_type_and_phone_number.
+--
+-- That migration replaced the peppered SHA-256 digest with a plaintext
+-- `phone_number` but deliberately LEFT the hash column in place for one deploy
+-- cycle: the pipeline migrates before it rolls services, and Prisma selects
+-- every scalar column by default, so dropping it in the same deploy that
+-- stopped using it would have made old tasks query a column that no longer
+-- existed — 500ing every user read, including the admin role check that runs on
+-- each /admin/* request. The column has been unwritten and unread since; this
+-- removes it.
+--
+-- Its unique index is NOT dropped here: 20260722120000 already did that
+-- (`DROP INDEX "User_phone_country_code_phone_number_hash_key"`). The real key
+-- is now the (phone_country_code, phone_number) unique in the Prisma schema.
+
+ALTER TABLE "User" DROP COLUMN "phone_number_hash";
+
+-- `user_login_type_shape` is deliberately left NOT VALID.
+--
+-- The obvious companion step -- ALTER TABLE "User" VALIDATE CONSTRAINT
+-- "user_login_type_shape" -- is NOT run here, and must not be added blindly.
+-- SHA-256 is irreversible, so every account created before 20260722120000 was
+-- backfilled as login_type='otp' with a NULL phone_number. Those rows violate
+-- the otp branch by construction, and validating would fail this migration on
+-- any database that still holds them. A fresh database (prod) has none and
+-- would validate trivially -- but a migration whose success depends on which
+-- environment it lands in is worse than one that is consistently deferred.
+--
+-- Those rows are already orphaned: their owners cannot log in (the lookup is by
+-- phone_number, which is NULL), and the next OTP verify mints a NEW User row.
+-- Validate only after they are deleted, as a deliberate, separately-reviewed
+-- data cleanup -- never as a side effect of a schema migration.

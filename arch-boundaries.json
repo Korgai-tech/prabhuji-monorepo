@@ -1,0 +1,141 @@
+{
+  "configs": [
+    {
+      "root": "apps/api/src",
+      "rules": [
+        {
+          "layer": "controllers",
+          "match": "/controllers/",
+          "forbid": [
+            "/repositories/",
+            "@prisma/client",
+            "@clickhouse/client"
+          ]
+        },
+        {
+          "layer": "services",
+          "match": "/services/",
+          "forbid": [
+            "/controllers/",
+            "/routes/",
+            "@prisma/client",
+            "@clickhouse/client"
+          ]
+        },
+        {
+          "layer": "repositories",
+          "match": "/repositories/",
+          "forbid": [
+            "/controllers/",
+            "/services/",
+            "/routes/"
+          ]
+        },
+        {
+          "layer": "shared",
+          "match": "/shared/",
+          "forbid": [
+            "@api/core/"
+          ],
+          "allowTypeOnly": [
+            "@api/core/aarti/api",
+            "@api/core/auth/api",
+            "@api/core/books/api",
+            "@api/core/chat/api",
+            "@api/core/deity/api",
+            "@api/core/engagement/api",
+            "@api/core/home/api",
+            "@api/core/horoscope/api",
+            "@api/core/kuldevta/api",
+            "@api/core/mantras/api",
+            "@api/core/media/api",
+            "@api/core/payment/api",
+            "@api/core/paywall/api",
+            "@api/core/pinned-content/api",
+            "@api/core/ringtone/api",
+            "@api/core/status/api",
+            "@api/core/subscription/api",
+            "@api/core/users/api",
+            "@api/core/wallpaper/api"
+          ]
+        }
+      ]
+    },
+    {
+      "root": "apps/events/src",
+      "rules": [
+        {
+          "layer": "handlers",
+          "match": "/handlers/",
+          "forbid": [
+            "/repositories/",
+            "@aws-sdk/"
+          ]
+        },
+        {
+          "layer": "services",
+          "match": "/services/",
+          "forbid": [
+            "/handlers/",
+            "fastify",
+            "@aws-sdk/"
+          ]
+        },
+        {
+          "layer": "repositories",
+          "match": "/repositories/",
+          "forbid": [
+            "/handlers/",
+            "/services/"
+          ]
+        },
+        {
+          "layer": "shared",
+          "match": "/shared/",
+          "forbid": [
+            "@events/core/"
+          ]
+        }
+      ]
+    },
+    {
+      "root": "apps/media-optimizer/src",
+      "rules": [
+        {
+          "layer": "handlers",
+          "match": "/handlers/",
+          "forbid": [
+            "/repositories/",
+            "@aws-sdk/",
+            "node:child_process"
+          ]
+        },
+        {
+          "layer": "services",
+          "match": "/services/",
+          "forbid": [
+            "/handlers/",
+            "/repositories/",
+            "@aws-sdk/",
+            "node:child_process"
+          ]
+        },
+        {
+          "layer": "repositories",
+          "match": "/repositories/",
+          "forbid": [
+            "/handlers/",
+            "/services/"
+          ]
+        },
+        {
+          "layer": "shared",
+          "match": "/shared/",
+          "forbid": [
+            "/core/"
+          ]
+        }
+      ]
+    }
+  ]
+}

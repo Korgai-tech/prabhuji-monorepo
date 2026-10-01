@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm verify)",
+      "Bash(pnpm verify:mobile)",
+      "Bash(pnpm check:arch-boundaries)",
+      "Bash(pnpm check:openapi)",
+      "Bash(pnpm openapi:emit)",
+      "Bash(pnpm nx:*)",
+      "Bash(pnpm exec nx:*)",
+      "Bash(pnpm install)",
+      "Bash(pnpm prisma generate:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter test:*)",
+      "Bash(flutter pub get)",
+      "Bash(node:*)",
+      "Bash(bash:*)"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "BRANCH=$(git branch --show-current 2>/dev/null); if [ \"$BRANCH\" = 'main' ]; then echo '⚠️ REMINDER: Create a feature branch (TAM-{number}-{description}) before making changes.'; fi"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/figma-skill-gate.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash.*git\\s+commit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '📝 REMINDER: Commit format: type(scope): description [TAM-XXX]'"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash.*git\\s+push",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "BRANCH=$(git branch --show-current); if [ \"$BRANCH\" = 'main' ]; then echo '❌ BLOCKER: Cannot push directly to main. Create a feature branch first: git checkout -b TAM-{number}-{description}'; exit 1; fi"
+          },
+          {
+            "type": "command",
+            "command": "if git status --porcelain | grep -q .; then echo '❌ BLOCKER: Uncommitted changes detected. Commit all changes before pushing.'; exit 1; fi"
+          },
+          {
+            "type": "command",
+            "command": "git fetch origin -q 2>/dev/null && git log HEAD..origin/main --oneline 2>/dev/null | grep -q . && echo '⚠️ WARNING: Branch is behind origin/main. Consider rebasing first: git rebase origin/main' || true"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash.*gh\\s+pr\\s+create",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '📋 REMINDER: Run /pre-pr for complete validation first (pnpm verify + codegen freshness)!'"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/figma-fidelity-pr-gate.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); case \"$FILE\" in *CLAUDE.md|*CONTRIBUTING.md|*AGENTS.md|*README.md) echo '📚 REMINDER: High-impact doc modified. Update related documentation in this PR.';; esac"
+          }
+        ]
+      },
+      {
+        "matcher": "Skill|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/figma-skill-marker.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '🚀 SAW harness active — tickets are in-repo specs (specs/TAM-N-*.md). Key commands: /start-work /check-workflow /pre-pr /end-work. Full list: .claude/README.md'; bash .claude/hooks/session-start-pattern-check.sh 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git status --porcelain | grep -q . && echo '⚠️ Session ending with uncommitted changes. Use /end-work to complete cleanly.' || echo '✅ Clean session end - no uncommitted changes'"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,295 @@
+design_execution_package:
+  app: "Prabhuji"
+  module: "Downloads"
+  screen_or_flow: "Downloads library, play-page download button, action sheets, offline mode, empty state"
+  version: "1.0"
+  status: "draft_for_review"
+  package_type: "module_wise_design_execution_package"
+  approval_required_before_export: true
+
+source:
+  main_figma_url: "https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=2632-21210"
+  main_figma_file_key: "ipSvV1FnmzvV8TK2Ig8Aiq"
+  main_figma_node_id: "2632:21210"
+  main_figma_frame_name: "Downloads"
+  origin_prd: "Prabhuji-Downloads-PRD.md (PM: Ronak)"
+  reconciliation_rule: "Figma is visual truth; PRD is behavior truth; on divergence Figma wins and it is flagged."
+  key_frames:
+    downloads_library: "2632:21373"
+    offline_banner: "2649:22822"
+    filter_chips: "2632:21376"
+    download_list: "2632:21385"
+    empty_state: "2639:22432"
+    empty_disclosure_card: "2649:22886"
+    home_with_downloads_nav_and_miniplayer: "2632:21396"
+    home_miniplayer_playerbar: "2641:22798"
+    aarti_bhajans_play_page: "2632:21211"
+    mantra_play_page: "2632:21299"
+    action_sheet_queued: "2632:21710"
+    action_sheet_failed: "2632:21734"
+    action_sheet_downloaded_list: "2632:21764"
+    action_sheet_downloaded_playpage: "2632:21797"
+  components:
+    download_button: "2632:21949"        # Property 1 = Download | Downloaded | Downloading
+    download_states: "2632:21835"        # Downloaded | Downloading | Queued | Failed
+    download_ring_states: "2632:21883"   # 0 | 25 | 50 | 75 | 100
+    download_list_item: "2632:21395"
+
+product_intent:
+  purpose: "Premium, in-app-only offline audio for Aarti/Bhajan/Mantra — one tap to keep, one place to find, works with no connection."
+  primary_user_goal: "Save daily audio once and play it offline."
+  primary_business_goal: "Lift repeat listening and give premium a concrete reason to convert."
+  design_principle: "Effortless and safe; not a file manager; protection communicated in one calm line."
+
+scope:
+  content_types: ["aarti", "bhajan", "mantra"]
+  excluded: ["video", "other content types"]
+
+access_model:
+  premium_only: true
+  free_user:
+    play_page_download_tap: "Open existing unified paywall (no downloads-specific paywall)."
+    accumulates_downloads: false
+  premium_user:
+    can_download: true
+    can_browse_manage_play_offline: true
+  premium_lapse:            # confirmed
+    downloaded_items_visible: true
+    play_tap_behavior: "Re-fire the unified paywall (entitlement re-checked at play time)."
+    on_resubscribe: "Play again without re-download if encrypted files remain."
+    on_reinstall: "App-private storage cleared; re-download required."   # assumption — q2
+
+entry_points:
+  - id: "play_page_download_button"
+    where: "Every Aarti/Bhajan/Mantra play page"
+    component: "Download Button (2632:21949)"
+    confidence: "confirmed"
+  - id: "bottom_nav_downloads_tab"
+    where: "Bottom navigation"
+    nav_five_items: ["Home", "Chat", "Status", "Downloads", "RashiFal"]
+    note: "Confirmed as of now; provisional app-wide IA (Mandir/Books drop out) — see open_questions q1."
+    confidence: "confirmed_provisional"
+  - id: "profile_my_downloads_row"
+    where: "Profile"
+    opens: "Downloads screen"
+    note: "In PRD; not present in this Figma frame — see open_questions q4."
+    confidence: "assumed"
+
+core_flows:
+  download:
+    steps:
+      - "Play page → tap download."
+      - "Icon becomes in-place progress ring (no new screen, no picker, no confirmation)."
+      - "On finish, button shows Downloaded state."
+    cancel: "Tap the ring to cancel and return to idle download icon."
+    concurrency: "Multiple downloads run; the rest queue. Downloads continue while browsing elsewhere."
+  listen_offline:
+    steps:
+      - "Open app with no connection → Downloads → tap any item."
+      - "Play page opens and plays; streaming content hidden while offline."
+
+screen_structure:
+  sections:
+    - id: "downloads_library"
+      name: "Downloads Screen"
+      figma: "2632:21373"
+      visible_elements:
+        - "Basic Nav title 'Downloads'"
+        - "Offline banner (2649:22822): 'You're offline, showing your downloads' — offline only"
+        - "Filter chips: All, Aarti, Bhajan, Mantra (each with a live count)"
+        - "Download list rows: artwork, title, 'type · duration · size'"
+        - "Bottom nav with Downloads active"
+      interactions:
+        - element: "Downloaded row"
+          action: "tap"
+          result: "Open the play page directly (no menu step)"
+          confidence: "confirmed"
+        - element: "Row ⋮"
+          action: "tap"
+          result: "Open the row action sheet for that state"
+          confidence: "confirmed"
+        - element: "Filter chip"
+          action: "tap"
+          result: "Filter the list in place; counts reflect the filtered set"
+          confidence: "confirmed"
+      rules:
+        - "Disclosure line 'downloads play only inside Prabhuji' shown (empty state today; confirm persistence on populated list — q5)."
+
+    - id: "row_states"
+      name: "Row / Button States"
+      source_component: "Download states (2632:21835)"
+      states:
+        downloaded: "Filled check; row tap plays; ⋮ → Play Now / Delete Download."
+        downloading: "Progress ring (0/25/50/75/100). Cancel via ⋮ → Cancel Download; ring tap cancels on play page."
+        queued: "'Queued' label; ⋮ → Cancel Download."
+        failed: "Failed indicator; ⋮ → Retry Download / Cancel Download."
+
+    - id: "row_action_sheets"
+      name: "Row Action Sheets"
+      sheets:
+        queued:
+          figma: "2632:21710"
+          options: ["Cancel Download"]
+        failed:
+          figma: "2632:21734"
+          options: ["Retry Download", "Cancel Download"]
+        downloaded_from_list:
+          figma: "2632:21764"
+          options: ["Play Now", "Delete Download"]
+        downloaded_from_play_page:
+          figma: "2632:21797"
+          options: ["Play Now", "Delete Download", "View All Downloads"]
+      rules:
+        - "Cancel affordance follows Figma: ⋮ sheet on the list; ring tap on the play page."
+
+    - id: "play_page_download_button"
+      name: "Play-Page Download Button"
+      figma: ["2632:21211", "2632:21299"]
+      component: "2632:21949"
+      states: ["Download", "Downloading", "Downloaded"]
+      label: "Download"
+      interactions:
+        - element: "Download button (free user)"
+          action: "tap"
+          result: "Open unified paywall"
+          confidence: "confirmed"
+        - element: "Download button (premium)"
+          action: "tap"
+          result: "Start in-place download (progress ring)"
+          confidence: "confirmed"
+
+    - id: "offline_mode"
+      name: "Offline Mode"
+      visible_elements:
+        - "Downloads library offline banner (2649:22822)"
+        - "Miniplayer Offline chip when the playing item came from downloads (Home Player Bar 2641:22798)"
+      rules:
+        - "Streaming content hidden while offline rather than shown broken."
+        - "Downloads behave exactly as online."
+
+    - id: "empty_state"
+      name: "Empty State"
+      figma: "2639:22432"
+      visible_elements:
+        - "Downloads icon avatar"
+        - "Title: 'Nothing downloaded yet'"
+        - "Body: 'Tap the download icon on any Aarti, Bhajan or Mantra play page, you'll be able to listen without internet.'"
+        - "Actions: 'Browse Aarti & Bhajans', 'Browse Mantras'"
+        - "Disclosure card (2649:22902): 'Plays only inside Prabhuji. Downloads are encrypted on your device, they can't be shared, copied out, or opened in another app.'"
+      interactions:
+        - element: "Browse Aarti & Bhajans"
+          action: "tap"
+          result: "Open Aarti & Bhajans module"
+          confidence: "confirmed"
+        - element: "Browse Mantras"
+          action: "tap"
+          result: "Open Mantras & Stutis module"
+          confidence: "confirmed"
+
+protection:
+  rules:
+    - "Usable inside Prabhuji and nowhere else."
+    - "Audio never written as a playable file; stored in app-private encrypted form; decrypted only while playing."
+    - "Nothing appears in file manager, gallery, or share sheets."
+    - "Sharing the audio file is impossible and never offered; link sharing is unaffected."
+    - "Ringtones keep their separate flow; downloads and ringtones do not share a file."
+    - "One user-facing disclosure line on the Downloads screen."
+  method_owner: "Engineering (exact method their decision)."
+
+data_requirements:
+  download_item_fields:
+    - "content_id"
+    - "content_type (aarti | bhajan | mantra)"
+    - "title"
+    - "artwork_url"
+    - "duration"
+    - "file_size_bytes"
+    - "state (downloaded | downloading | queued | failed)"
+    - "progress_percent (when downloading)"
+    - "failure_reason (network | storage_full | server_error)"
+    - "downloaded_at"
+  filters: ["All", "Aarti", "Bhajan", "Mantra"]
+  storage: "App-private encrypted store; decrypt-on-play only."
+  entitlement: "Re-checked at play time to enforce premium-lapse paywall."
+
+states:
+  downloading: "In-place ring; multiple run, rest queue; continues while browsing."
+  queued: "'Queued' until a slot frees."
+  failed: "Failed indicator; Retry/Cancel via ⋮ (network/server errors)."
+  storage_full: "Surfaces as a failed download (failure_reason: storage_full); no storage UI."
+  offline: "Offline banner; streaming hidden; miniplayer Offline chip; downloads play normally."
+  empty: "'Nothing downloaded yet' + Browse actions + disclosure."
+  premium_lapse: "Downloaded rows remain; play tap → unified paywall."
+  free_download_tap: "Unified paywall."
+
+analytics_events:
+  - event_name: "download_clicked"
+    trigger: "Download tapped on a play page"
+    properties: ["content_id", "content_type", "source_screen", "user_subscription_status"]
+    required: true
+  - event_name: "download_started"
+    trigger: "Download begins"
+    properties: ["content_id", "content_type", "file_size_bytes", "network_type", "queue_position"]
+    required: true
+  - event_name: "download_completed"
+    trigger: "Finishes and is playable offline"
+    properties: ["content_id", "content_type", "file_size_bytes", "duration_ms", "network_type"]
+    required: true
+  - event_name: "download_failed"
+    trigger: "Does not complete"
+    properties: ["content_id", "failure_reason", "retry_count", "bytes_downloaded"]
+    required: true
+  - event_name: "download_cancelled"
+    trigger: "User cancels"
+    properties: ["content_id", "percent_complete"]
+    required: true
+  - event_name: "download_removed"
+    trigger: "User removes a download"
+    properties: ["content_id", "content_type", "days_since_download", "play_count"]
+    required: true
+  - event_name: "downloads_page_viewed"
+    trigger: "Downloads screen visible"
+    properties: ["entry_point", "download_count", "is_offline"]
+    required: true
+  - event_name: "downloads_filter_clicked"
+    trigger: "Filter pill tapped"
+    properties: ["filter_type", "result_count"]
+    required: true
+  - event_name: "downloaded_content_played"
+    trigger: "Playback starts from a downloaded file"
+    properties: ["content_id", "content_type", "is_offline", "days_since_download", "play_count"]
+    required: true
+  - event_name: "app_offline_mode_entered"
+    trigger: "App switches to downloads-only"
+    properties: ["download_count", "source_screen"]
+    required: true
+  - event_name: "downloads_paywall_triggered"
+    trigger: "Free download tap or lapsed-play tap opens the unified paywall"
+    properties: ["trigger (free_download_tap | lapsed_play_tap)", "content_id"]
+    required: false
+  user_properties: ["download_count", "download_lifetime_count", "download_offline_play_share"]
+
+qa_checks:
+  - "Downloads are premium-only; a free user's download tap opens the existing unified paywall."
+  - "There is no downloads-specific paywall."
+  - "One tap on a play page starts an in-place download with a progress ring; no picker, confirmation, or sheet."
+  - "Tapping the ring cancels and returns to the idle download icon."
+  - "Multiple downloads run and the rest queue; downloads continue while browsing."
+  - "The Downloads screen filters are All, Aarti, Bhajan, Mantra with live counts."
+  - "Tapping a downloaded row opens the play page directly with no menu step."
+  - "The ⋮ sheet shows Cancel (queued); Retry/Cancel (failed); Play Now/Delete (downloaded list); Play Now/Delete/View All Downloads (downloaded from play page)."
+  - "Cancel on the Downloads list is via the ⋮ sheet, not an inline ×."
+  - "Storage-full surfaces as a failed download; there is no storage-management UI."
+  - "There is no Wi-Fi-only toggle in Phase 1."
+  - "Offline shows the banner, hides streaming content, and marks the miniplayer with an Offline chip."
+  - "The empty state shows 'Nothing downloaded yet' with Browse actions and the in-app-only disclosure."
+  - "Downloaded audio is never exposed as a shareable or externally-openable file."
+  - "Ringtones keep their separate flow; downloads and ringtones do not share a file."
+  - "On premium lapse, downloaded items stay visible and tapping one to play re-fires the unified paywall."
+  - "The bottom nav shows Home / Chat / Status / Downloads / RashiFal (provisional)."
+
+handoff_readiness:
+  ready_for_dev_discussion: true
+  ready_for_final_build: false
+  blocked_by: "Confirm final bottom-nav IA (q1) and premium reinstall/re-download behavior (q2)."
+  remaining_questions_file: "open-questions.yaml"

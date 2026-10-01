@@ -1,0 +1,61 @@
+open_questions:
+  - id: "q1"
+    question: "What is the final visual design for the Phase 1 in-app mini-player?"
+    owner: "Design"
+    priority: "high"
+    current_decision: "Audio continues with an in-app mini-player when the user leaves the full player. The mini-player is Phase 1 behavior."
+    recommendation: "Create a compact sticky mini-player component with artwork, title, play/pause, and close/dismiss. Tapping the surface should reopen the full player."
+    blocker: true
+
+  - id: "q2"
+    question: "Should audio continue when the app is backgrounded or the phone is locked?"
+    owner: "Product / Engineering"
+    priority: "medium"
+    current_decision: "In-app mini-player is required. Android background/lock-screen controls are not confirmed for Phase 1."
+    recommendation: "Keep Android background media controls as Phase 2 unless the selected audio library supports them with low effort."
+    blocker: false
+
+  - id: "q3"
+    question: "What is the exact account/session fallback if a Pro entitlement cannot be verified at playback time?"
+    owner: "Product / Engineering"
+    priority: "medium"
+    current_decision: "Pro users can stream, like/favorite, and share. No extra login prompt should appear unless account/session state is missing."
+    recommendation: "Use the existing subscription/session restore flow. If entitlement cannot be verified, show a calm restore/login prompt before playback."
+    blocker: false
+
+  - id: "q4"
+    question: "What is the exact deep-link route and payload for shared audio items?"
+    owner: "Engineering / Product"
+    priority: "medium"
+    current_decision: "Share opens the native share sheet with an item deep link. Free recipients can browse but must subscribe before playback."
+    recommendation: "Use a route that preserves audio_id and source context where possible, for example prabhuji://aarti-bhajans/audio/{audio_id}."
+    blocker: false
+
+  - id: "q5"
+    question: "Should Show all for Deities open an expanded deity picker or a combined deity-filter listing?"
+    owner: "Product / Design"
+    priority: "low"
+    current_decision: "Show all should use the same reusable listing/navigation pattern. Exact deity Show all destination is not visually specified."
+    recommendation: "Use an expanded deity picker/list in Phase 1 if many deities exist; otherwise hide Show all when all visible deities fit horizontally."
+    blocker: false
+
+  - id: "q6"
+    question: "What are the final placeholder images and fallback rules for missing audio, category, or deity artwork?"
+    owner: "Design / CMS"
+    priority: "low"
+    current_decision: "Figma uses devotional artwork. CMS should provide images."
+    recommendation: "Provide a respectful default devotional placeholder that does not depict a specific deity unless content is tagged."
+    blocker: false
+
+phase_2_items:
+  - "Lyrics or devotional text inside the player."
+  - "Repetition counter for mantra/jaap style content."
+  - "Next-track card below the player."
+  - "Liked/favorite library."
+  - "Offline downloads or cached listening."
+  - "Repeat one, repeat all, and loop mode."
+  - "Android lock-screen/background media controls if not included in Phase 1."
+  - "Personalized recommendations by deity, language, or recent usage."
+  - "Contextual paywall explanation for audio playback value."
+  - "Search inside Aarti & Bhajans."
+  - "Download/share audio file if content rights allow it."

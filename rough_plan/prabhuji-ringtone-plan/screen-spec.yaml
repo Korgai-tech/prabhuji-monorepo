@@ -1,0 +1,614 @@
+design_execution_package:
+  app: Prabhuji
+  module: Ringtone
+  screen_or_flow: Module Spec
+  version: v1.0
+  status: approved
+  package_type: module_wise
+  approval_required_before_export: false
+
+source:
+  figma_file_key: ipSvV1FnmzvV8TK2Ig8Aiq
+  figma_urls:
+    main_module: 'https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=712-7122&t=TzCwzI6RZASLubyK-1'
+    ringtone_home: 'https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=670-4481&t=TzCwzI6RZASLubyK-1'
+    search_results: 'https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=1073-3472&t=TzCwzI6RZASLubyK-1'
+    ringtone_preview: 'https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=683-4775&t=TzCwzI6RZASLubyK-1'
+    share_ringtone: 'https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=683-5084&t=TzCwzI6RZASLubyK-1'
+    card_component_reference: 'https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=676-4710&t=TzCwzI6RZASLubyK-1'
+  node_ids:
+    main_module: '712:7122'
+    ringtone_home: '670:4481'
+    search_results: '1073:3472'
+    ringtone_preview: '683:4775'
+    share_ringtone: '683:5084'
+    card_component_reference: '676:4710'
+  frame_names:
+    - Ringtone
+    - Ringtone Home
+    - Search Results
+    - Ringtone-PREVIEW
+    - SHARE RINGTONE
+
+product_intent:
+  purpose: Let users discover devotional ringtones, preview selected ringtones, and set one as their phone ringtone.
+  primary_user_goal: Find a devotional ringtone and set it as the phone ringtone.
+  primary_business_goal: Drive Pro subscription after clear ringtone intent.
+  design_principle:
+    - DP01 Devotional First, Feed Second
+    - DP02 Preserve Sacred Visual Dignity
+    - DP05 Pro as Added Devotional Value
+    - DP08 Lightweight, Readable, Small-Screen First
+
+access_model:
+  free_user:
+    can_view:
+      - Ringtone Home
+      - deity filters
+      - text search
+      - Search Results
+      - ringtone card titles, thumbnails, play counts, and set counts
+    can_do:
+      - browse ringtones
+      - filter by deity
+      - search by title, deity, tags, and keywords
+    cannot_do:
+      - open preview before subscription
+      - play ringtone audio before subscription
+      - like ringtone
+      - share ringtone
+      - set ringtone
+    paywall_triggers:
+      - tapping ringtone card
+      - tapping play overlay on ringtone card
+      - tapping any future exposed like, share, or set action
+    should_not_show:
+      - paywall on module entry
+      - lock badges on cards
+      - Pro labels on discovery cards
+      - ringtone preview before subscription
+  pro_user:
+    can_view:
+      - all Ringtone discovery surfaces
+      - Ringtone Preview
+      - Share Ringtone flow
+    can_do:
+      - open preview
+      - auto-play selected ringtone after card tap
+      - pause and resume audio
+      - like and unlike ringtone
+      - share ringtone deep link
+      - set selected ringtone as phone ringtone
+    paywall_triggers: []
+    should_not_show:
+      - paywall for ringtone card tap
+      - paywall for preview, play, like, share, or set ringtone
+  subscription_success_continuation:
+    trigger: free user subscribes successfully after tapping ringtone card
+    result: open selected ringtone preview and auto-play selected ringtone
+    confidence: confirmed
+
+screen_structure:
+  sections:
+    - id: ringtone_home_header
+      name: Ringtone Home Header
+      source: Ringtone Home frame
+      visible_elements:
+        - Android status bar
+        - back button
+        - search field with placeholder Search Ringtones
+        - microphone icon shown in Figma
+      interactions:
+        - element: back button
+          action: tap
+          result: return to previous screen
+          confidence: confirmed
+        - element: search field
+          action: tap and type query
+          result: search input becomes active and user can submit text search
+          confidence: confirmed
+        - element: microphone icon
+          action: tap
+          result: no Phase 1 voice search behavior; hide or disable unless Design keeps it visible
+          confidence: confirmed
+      rules:
+        - Voice search is Phase 2.
+        - Search itself never triggers paywall.
+    - id: deity_filter_row
+      name: CMS-controlled deity filters
+      source: Ringtone Home frame
+      visible_elements:
+        - All Gods selected state
+        - deity chips with circular images
+        - labels such as Hanuman ji, Ram ji, Durga Ma, Ganesh
+      interactions:
+        - element: deity filter chip
+          action: tap
+          result: filter ringtone grid in-place
+          confidence: confirmed
+      rules:
+        - CMS controls deity list, image or icon, sort order, and ringtone mapping.
+        - All Gods is default.
+        - Same deity filter pattern is reused across multiple modules.
+    - id: ringtone_grid
+      name: Ringtone grid
+      source: Ringtone Home and Search Results frames
+      visible_elements:
+        - 3-column card grid
+        - ringtone thumbnail
+        - play icon overlay
+        - ringtone title
+        - play count with headphone icon
+        - set count with ringtone icon
+        - orange card border
+      interactions:
+        - element: ringtone card or play overlay
+          action: tap by free user
+          result: open unified paywall directly
+          confidence: confirmed
+        - element: ringtone card or play overlay
+          action: tap by pro user
+          result: open Ringtone Preview and auto-play selected ringtone
+          confidence: confirmed
+      rules:
+        - Whole card should be tappable.
+        - No lock badges on cards.
+        - Counts use Indian compact format.
+    - id: search_results
+      name: Search Results
+      source: Search Results frame
+      visible_elements:
+        - search field with entered query, example Krishna
+        - Search Results heading
+        - same 3-column ringtone grid
+      interactions:
+        - element: submitted search query
+          action: submit
+          result: query CMS title, deity, tags, and keywords
+          confidence: confirmed
+        - element: ringtone card in search results
+          action: tap by free user
+          result: open unified paywall
+          confidence: confirmed
+        - element: ringtone card in search results
+          action: tap by pro user
+          result: open preview and auto-play selected ringtone
+          confidence: confirmed
+      rules:
+        - No results copy is No results found.
+    - id: ringtone_preview
+      name: Ringtone Preview
+      source: Ringtone-PREVIEW frame
+      visible_elements:
+        - back button
+        - large devotional image
+        - ringtone title
+        - ringtone set count
+        - like count
+        - play count
+        - share count
+        - play or pause control
+        - Set Ringtone primary CTA
+      interactions:
+        - element: screen entry from card tap
+          action: open
+          result: selected ringtone auto-plays for Pro users or post-subscription users
+          confidence: confirmed
+        - element: play or pause control
+          action: tap
+          result: pause or resume selected ringtone
+          confidence: confirmed
+        - element: back button
+          action: tap
+          result: stop or pause audio and return to previous screen
+          confidence: confirmed
+        - element: like icon
+          action: tap by pro user
+          result: toggle like state
+          confidence: confirmed
+        - element: share metric or icon
+          action: tap by pro user
+          result: open share flow
+          confidence: confirmed
+        - element: Set Ringtone CTA
+          action: tap by pro user
+          result: start phone ringtone set flow
+          confidence: confirmed
+      rules:
+        - Preview is Pro-only in Phase 1.
+        - Only one ringtone plays at a time.
+        - No background playback in Phase 1.
+        - Audio stops or pauses on exit, back, app background, or share flow.
+    - id: share_ringtone
+      name: Share Ringtone
+      source: SHARE RINGTONE frame
+      visible_elements:
+        - bottom sheet
+        - preview image
+        - Choose an app to share title
+        - Whatsapp destination
+        - Status destination
+        - Instagram destination
+        - Other destination
+      interactions:
+        - element: share destination
+          action: tap
+          result: share deep link, ringtone title, and devotional preview image through selected destination
+          confidence: partially_confirmed
+        - element: Other
+          action: tap
+          result: open native Android share sheet
+          confidence: partially_confirmed
+      rules:
+        - Share is Pro-only.
+        - Engineering may use custom Figma share sheet or native Android share sheet.
+        - Raw audio file must not be shared in Phase 1.
+
+ringtone_card_behavior:
+  access:
+    free_user_tap_result: open unified paywall
+    pro_user_tap_result: open preview and auto-play selected ringtone
+  displayed_fields:
+    - thumbnail_image
+    - title
+    - play_count
+    - set_count
+  count_format:
+    under_1000: plain number, for example 99
+    thousands: compact k, for example 1k or 8.5k
+    lakhs: compact L, for example 1.5L or 10.2L
+  rules:
+    - Card tap and play overlay tap have the same access behavior.
+    - No card-level lock badge in Phase 1.
+    - Invalid CMS cards should be hidden.
+
+search_and_filter_behavior:
+  text_search:
+    phase_1: true
+    cms_fields:
+      - title
+      - deity
+      - tags
+      - keywords
+    empty_query_result: show unfiltered Ringtone Home list
+    no_results_copy: No results found
+  voice_search:
+    phase_1: false
+    recommendation: hide or disable microphone icon in Phase 1
+  deity_filters:
+    source: CMS
+    default_filter: All Gods
+    behavior: filters grid in-place
+    reusable_across_modules: true
+
+preview_audio_behavior:
+  auto_play:
+    enabled: true
+    trigger: Pro user or newly subscribed user opens preview from card tap
+    confidence: confirmed
+  playback_rules:
+    - Only one ringtone plays at a time.
+    - Audio stops or pauses when preview is exited.
+    - Audio stops or pauses when user opens share flow.
+    - Audio stops or pauses when app backgrounds.
+    - No background playback in Phase 1.
+  play_count_rule:
+    event: ringtone_play_counted
+    count_after: 3 seconds of playback or 25 percent of duration, whichever comes first
+    do_not_count_if: audio fails or user exits before threshold
+    confidence: confirmed
+
+set_ringtone_behavior:
+  phase_1_target: phone_ringtone
+  pro_only: true
+  not_phase_1:
+    - alarm tone
+    - notification tone
+    - contact-specific ringtone
+  flow:
+    - step: user taps Set Ringtone
+      event: ringtone_set_tapped
+    - step: app checks Android system setting permission or required ringtone access
+      event: ringtone_permission_required if missing
+    - step: if missing, app opens settings or permission flow
+      event: ringtone_permission_settings_opened
+    - step: if enabled, app sets selected audio as phone ringtone
+      event: ringtone_set_success if detectable
+    - step: if denied or not enabled, show settings message
+      event: ringtone_permission_denied
+    - step: if setting fails, show set failed message
+      event: ringtone_set_failed
+  permission_denied_copy: Please enable ringtone permission from Settings to set this ringtone.
+  set_failed_copy: Couldn’t set ringtone. Please try again.
+  tracking_note: Primary Phase 1 product event is ringtone_set_tapped. Success and failure should be tracked if Engineering can reliably detect them.
+
+share_behavior:
+  access: Pro-only
+  payload:
+    type: deep_link
+    includes:
+      - ringtone title
+      - devotional preview image
+      - Prabhuji deep link
+    excludes:
+      - raw audio file
+  implementation_choice:
+    owner: Engineering
+    options:
+      - custom Figma share sheet
+      - native Android share sheet
+    recommendation: use native Android share sheet for Phase 1 unless custom routing is already simple
+  destinations_if_custom:
+    whatsapp: share to WhatsApp chat if installed
+    status: share to WhatsApp Status if supported
+    instagram: share to Instagram if supported
+    other: open native Android share sheet
+  fallback: if target app is unavailable, fall back to native share sheet or show a short unavailable message
+
+analytics_tracking_rules:
+  funnel:
+    - ringtone_module_opened
+    - ringtone_card_tapped
+    - ringtone_paywall_opened
+    - ringtone_subscription_success
+    - ringtone_preview_opened
+    - ringtone_play_counted
+    - ringtone_set_tapped
+    - ringtone_set_success
+  play_count_source: ringtone_play_counted
+  set_intent_source: ringtone_set_tapped
+  set_success_source: ringtone_set_success if reliably detectable
+  share_count_source: ringtone_share_destination_selected or ringtone_share_completed if OS callback is reliable
+  recommended_common_properties:
+    - user_type
+    - entry_source
+    - source_screen
+    - ringtone_id
+    - ringtone_title
+    - deity_id
+    - deity_name
+    - position_index
+    - search_query
+    - result_count
+    - subscription_plan_id
+    - paywall_type
+    - audio_duration_seconds
+    - playback_position_seconds
+    - auto_play
+    - set_target
+    - permission_status_before_tap
+    - share_destination
+    - share_payload_type
+    - error_code
+
+paywall_behavior:
+  paywall_type: unified
+  trigger_timing: after intent only
+  triggers:
+    - free user taps ringtone card
+    - free user taps card play overlay
+    - free user taps any future exposed like, share, or set action
+  success_result: open selected ringtone preview and auto-play selected ringtone
+  cancel_result: return user to previous ringtone listing context
+  no_contextual_paywall_in_phase_1: true
+
+permission_behavior:
+  platform: Android
+  required_for: setting default phone ringtone
+  missing_permission_result: open or guide to Android settings permission flow
+  denied_copy: Please enable ringtone permission from Settings to set this ringtone.
+  failure_copy: Couldn’t set ringtone. Please try again.
+  retry_allowed: true
+
+data_requirements:
+  cms:
+    ringtone:
+      required_fields:
+        - ringtone_id
+        - title
+        - deity_id
+        - deity_name
+        - thumbnail_image_url
+        - preview_image_url
+        - audio_url
+        - duration_seconds
+        - play_count
+        - set_count
+        - like_count
+        - share_count
+        - tags
+        - search_keywords
+        - active_status
+        - sort_order
+      optional_fields:
+        - language
+        - festival_tag
+        - artist_or_source
+        - deep_link_url
+        - alt_text
+    deity_filter:
+      required_fields:
+        - deity_id
+        - deity_name
+        - deity_image_or_icon_url
+        - sort_order
+        - active_status
+      rules:
+        - All Gods is default.
+        - CMS controls ordering.
+    share_metadata:
+      required_fields:
+        - share_title
+        - share_description
+        - preview_image_url
+        - deep_link_url
+  validation_rules:
+    - Hide ringtone cards missing id, title, thumbnail, or audio_url.
+    - Hide inactive ringtones.
+    - Use fallback image only if approved globally by Design or CMS.
+
+states:
+  loading:
+    description: Show lightweight placeholders for deity filters and ringtone grid.
+  empty:
+    description: CMS returns no ringtones for selected filter.
+    copy: No ringtones found
+  no_search_results:
+    description: Search returns zero results.
+    copy: No results found
+  cms_error:
+    description: CMS or network fails while loading listing.
+    copy: Couldn’t load ringtones.
+    action: Retry
+  partial_failure:
+    description: Hide invalid ringtone cards and show remaining valid cards.
+  audio_error:
+    description: Audio fails to load or play.
+    copy: Couldn’t play this ringtone.
+  set_failed:
+    description: System ringtone setting fails.
+    copy: Couldn’t set ringtone. Please try again.
+  permission_denied:
+    description: User denies or does not enable ringtone permission.
+    copy: Please enable ringtone permission from Settings to set this ringtone.
+  offline:
+    description: Show CMS error on listing load or audio error on preview playback.
+
+analytics_events:
+  - event_name: ringtone_module_opened
+    trigger: User opens Ringtone module.
+    required: true
+  - event_name: ringtone_deity_filter_selected
+    trigger: User selects a deity filter.
+    required: true
+  - event_name: ringtone_search_submitted
+    trigger: User submits a text search.
+    required: true
+  - event_name: ringtone_search_results_viewed
+    trigger: Search results load successfully.
+    required: false
+  - event_name: ringtone_no_search_results_viewed
+    trigger: Search returns zero results.
+    required: true
+  - event_name: ringtone_card_tapped
+    trigger: User taps a ringtone card or play overlay.
+    required: true
+  - event_name: ringtone_paywall_opened
+    trigger: Free user taps ringtone card or play overlay.
+    required: true
+  - event_name: ringtone_paywall_cta_tapped
+    trigger: User taps subscribe CTA from ringtone paywall flow.
+    required: true
+  - event_name: ringtone_subscription_success
+    trigger: Subscription succeeds from ringtone paywall flow.
+    required: true
+  - event_name: ringtone_subscription_cancelled
+    trigger: User closes or cancels paywall.
+    required: false
+  - event_name: ringtone_subscription_failed
+    trigger: Subscription or payment attempt fails.
+    required: true
+  - event_name: ringtone_preview_opened
+    trigger: Ringtone preview opens for Pro or newly subscribed user.
+    required: true
+  - event_name: ringtone_play_started
+    trigger: Ringtone audio starts playing.
+    required: true
+  - event_name: ringtone_play_counted
+    trigger: Playback reaches 3 seconds or 25 percent of duration.
+    required: true
+  - event_name: ringtone_play_paused
+    trigger: User pauses ringtone audio.
+    required: false
+  - event_name: ringtone_play_completed
+    trigger: Ringtone audio reaches end.
+    required: false
+  - event_name: ringtone_audio_error
+    trigger: Audio fails to load or play.
+    required: true
+  - event_name: ringtone_like_tapped
+    trigger: Pro user likes ringtone.
+    required: false
+  - event_name: ringtone_like_removed
+    trigger: Pro user removes like.
+    required: false
+  - event_name: ringtone_share_tapped
+    trigger: Pro user taps share.
+    required: true
+  - event_name: ringtone_share_sheet_opened
+    trigger: Share sheet opens.
+    required: false
+  - event_name: ringtone_share_destination_selected
+    trigger: User selects share destination.
+    required: true
+  - event_name: ringtone_share_completed
+    trigger: Share completes if OS callback is available.
+    required: false
+  - event_name: ringtone_share_failed
+    trigger: Share fails or destination unavailable.
+    required: false
+  - event_name: ringtone_set_tapped
+    trigger: Pro user taps Set Ringtone.
+    required: true
+  - event_name: ringtone_permission_required
+    trigger: App needs Android permission or settings access.
+    required: true
+  - event_name: ringtone_permission_settings_opened
+    trigger: User is sent to settings or permission flow.
+    required: true
+  - event_name: ringtone_permission_enabled
+    trigger: User enables required permission if detectable.
+    required: false
+  - event_name: ringtone_permission_denied
+    trigger: User denies or returns without enabling permission.
+    required: true
+  - event_name: ringtone_set_success
+    trigger: Ringtone is successfully set if detectable.
+    required: true
+  - event_name: ringtone_set_failed
+    trigger: Ringtone set action fails.
+    required: true
+  - event_name: ringtone_cms_load_failed
+    trigger: CMS/listing fails to load.
+    required: true
+  - event_name: ringtone_retry_tapped
+    trigger: User taps Retry after CMS error.
+    required: false
+  - event_name: ringtone_empty_state_viewed
+    trigger: CMS returns no ringtones.
+    required: false
+
+qa_checks:
+  - Free users can open Ringtone Home without seeing a paywall.
+  - Free users can use deity filters without seeing a paywall.
+  - Free users can submit text search without seeing a paywall.
+  - Free users tapping a ringtone card opens the unified paywall.
+  - Free users tapping a card play overlay opens the unified paywall.
+  - Free users cannot hear ringtone audio before subscription in Phase 1.
+  - After successful subscription from a ringtone tap, the selected ringtone preview opens.
+  - After successful subscription from a ringtone tap, the selected ringtone auto-plays.
+  - Pro users tapping a ringtone card opens Ringtone Preview.
+  - Pro users hear auto-play when preview opens from a card tap.
+  - Only one ringtone plays at a time.
+  - Audio stops or pauses when the preview screen is exited.
+  - Audio does not continue in background in Phase 1.
+  - The play count is not incremented before 3 seconds or 25 percent duration threshold.
+  - The Set Ringtone CTA sets only the default phone ringtone in Phase 1.
+  - If ringtone permission is missing, the app guides the user to settings or permission flow.
+  - If permission is denied, the app shows the settings permission message.
+  - If set ringtone fails, the app shows Couldn’t set ringtone. Please try again.
+  - Share payload does not include the raw audio file.
+  - Share payload includes ringtone title, devotional preview image, and deep link.
+  - Voice search does not request microphone permission in Phase 1.
+  - Counts display in Indian compact format.
+  - CMS error state shows Couldn’t load ringtones and a Retry CTA.
+  - No search results state shows No results found.
+  - Empty ringtone state shows No ringtones found.
+  - Invalid CMS ringtone cards are hidden instead of breaking the grid.
+
+handoff_readiness:
+  ready_for_dev_discussion: true
+  ready_for_final_build: true
+  remaining_questions_file: open-questions.yaml
+  approval_status: approved
+  approved_export_path: Prabhuji / Ringtone / Module Spec / v1.0

@@ -1,0 +1,56 @@
+{
+  "name": "media-optimizer",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/media-optimizer/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "target": "node22",
+        "outputPath": "apps/media-optimizer/dist",
+        "format": ["esm"],
+        "bundle": true,
+        "thirdParty": true,
+        "external": [],
+        "main": "apps/media-optimizer/src/index.ts",
+        "tsConfig": "apps/media-optimizer/tsconfig.app.json",
+        "declaration": false,
+        "skipTypeCheck": true,
+        "generatePackageJson": false,
+        "esbuildOptions": {
+          "sourcemap": false,
+          "outExtension": {
+            ".js": ".mjs"
+          },
+          "banner": {
+            "js": "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {}
+      }
+    },
+    "typecheck": {
+      "options": {
+        "command": "tsc --build tsconfig.json --emitDeclarationOnly --force"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": { "lintFilePatterns": ["apps/media-optimizer/src/**/*.ts"] }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config apps/media-optimizer/vitest.config.ts"
+      }
+    }
+  },
+  "tags": []
+}

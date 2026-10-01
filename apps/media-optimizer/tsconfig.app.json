@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "node_modules/.cache/tsc/app-out",
+    "types": ["node"],
+    "rootDir": "src",
+    "tsBuildInfoFile": "node_modules/.cache/tsc/app.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/__tests__/**", "src/**/*.test.ts"],
+  "references": [
+    {
+      "path": "../../packages/media-profiles/tsconfig.lib.json"
+    }
+  ]
+}

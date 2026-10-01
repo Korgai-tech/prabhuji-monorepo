@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  FileProvider paths for the story/status direct-share launcher
+  (StorySharePlugin.kt).
+
+  The rendered composite files written by StatusRenderService live under
+  either the app's internal cache or the OS temp dir (which Flutter's engine
+  maps to internal cache on Android, but historic OEM builds have been seen
+  routing it to external cache). We enumerate every plausible root so
+  FileProvider.getUriForFile can always resolve the file regardless of
+  which dart:io path landed:
+    - cache-path            → context.getCacheDir()
+    - files-path            → context.getFilesDir()
+    - external-cache-path   → context.getExternalCacheDir()
+    - external-files-path   → context.getExternalFilesDir(null)
+    - external-path         → Environment.getExternalStorageDirectory()
+
+  All read-only, all confined to the app; `<external-path>` maps to shared
+  storage but only the specific paths declared here are exposed, and every
+  grant is one-shot via FLAG_GRANT_READ_URI_PERMISSION.
+-->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path
+        name="story_share_cache"
+        path="." />
+    <files-path
+        name="story_share_files"
+        path="." />
+    <external-cache-path
+        name="story_share_ext_cache"
+        path="." />
+    <external-files-path
+        name="story_share_ext_files"
+        path="." />
+    <external-path
+        name="story_share_ext"
+        path="." />
+</paths>

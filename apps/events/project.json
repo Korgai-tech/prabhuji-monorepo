@@ -1,0 +1,129 @@
+{
+  "name": "events",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/events/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "apps/events/dist",
+        "format": ["esm"],
+        "bundle": true,
+        "thirdParty": false,
+        "external": [],
+        "main": "apps/events/src/index.ts",
+        "additionalEntryPoints": ["apps/events/src/healthcheck.ts", "apps/events/src/telemetry.ts"],
+        "tsConfig": "apps/events/tsconfig.app.json",
+        "declaration": false,
+        "skipTypeCheck": true,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "prune-lockfile": {
+      "dependsOn": ["build"],
+      "cache": true,
+      "executor": "@nx/js:prune-lockfile",
+      "outputs": [
+        "{workspaceRoot}/apps/events/dist/package.json",
+        "{workspaceRoot}/apps/events/dist/pnpm-lock.yaml"
+      ],
+      "options": {
+        "buildTarget": "build"
+      }
+    },
+    "copy-workspace-modules": {
+      "dependsOn": ["build"],
+      "cache": true,
+      "outputs": ["{workspaceRoot}/apps/events/dist/workspace_modules"],
+      "executor": "@nx/js:copy-workspace-modules",
+      "options": {
+        "buildTarget": "build"
+      }
+    },
+    "prune": {
+      "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
+      "executor": "nx:noop"
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "tsx watch --tsconfig apps/events/tsconfig.app.json apps/events/src/index.ts",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "node apps/events/dist/index.js",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "typecheck": {
+      "options": {
+        "command": "tsc --build tsconfig.json --emitDeclarationOnly --force"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": { "lintFilePatterns": ["apps/events/src/**/*.ts"] }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --project unit --config apps/events/vitest.config.ts"
+      },
+      "configurations": {
+        "unit": {
+          "command": "vitest run --project unit --config apps/events/vitest.config.ts"
+        },
+        "integration": {
+          "command": "vitest run --project integration --config apps/events/vitest.config.ts"
+        }
+      }
+    },
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsx apps/events/db/migrate.ts migrate",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "ch-status": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsx apps/events/db/migrate.ts status",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "ch-check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsx apps/events/db/migrate.ts check",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  },
+  "tags": []
+}

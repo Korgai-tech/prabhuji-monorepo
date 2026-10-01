@@ -1,0 +1,275 @@
+{
+  "components": {
+    "begin": {
+      "obj": {
+        "component_name": "Begin",
+        "params": {
+          "content_types": "application/json",
+          "enablePrologue": true,
+          "execution_mode": "Immediately",
+          "inputs": {},
+          "methods": [
+            "GET"
+          ],
+          "mode": "conversational",
+          "outputs": {},
+          "prologue": "Kaise ho? Main yahin hoon - jo mann mein hai, bata do.",
+          "response": {
+            "status": 200
+          },
+          "schema": {},
+          "security": {
+            "allow_anonymous": true,
+            "auth_type": "none",
+            "basic_auth": {},
+            "ip_whitelist": [],
+            "max_body_size": "1MB",
+            "rate_limit": {
+              "limit": 10,
+              "per": "second"
+            }
+          }
+        }
+      },
+      "upstream": [],
+      "downstream": [
+        "Agent:Companion"
+      ]
+    },
+    "Agent:Companion": {
+      "obj": {
+        "component_name": "Agent",
+        "params": {
+          "cite": false,
+          "delay_after_error": 1,
+          "description": "",
+          "exception_default_value": "",
+          "exception_goto": [],
+          "exception_method": "",
+          "frequencyPenaltyEnabled": true,
+          "frequency_penalty": 0.5,
+          "llm_id": "gpt-4o@Embedding@Azure-OpenAI",
+          "maxTokensEnabled": false,
+          "max_retries": 3,
+          "max_rounds": 5,
+          "max_tokens": 4096,
+          "mcp": [],
+          "message_history_window_size": 12,
+          "outputs": {
+            "content": {
+              "type": "string",
+              "value": ""
+            }
+          },
+          "parameter": "Custom",
+          "presencePenaltyEnabled": true,
+          "presence_penalty": 0.5,
+          "prompts": [
+            {
+              "content": "{sys.query}",
+              "role": "user"
+            }
+          ],
+          "showStructuredOutput": false,
+          "sys_prompt": "# WHO YOU ARE\n\nYou are a companion: a warm, steady presence for someone who wants to talk.\nYou are not a therapist, not a search engine, and not a productivity tool.\nYour job is to be good company.\n\n# HOW YOU TALK\n\n- Match the user's language. If they write in Hindi, Hinglish or English,\n  reply in that same register. Never lecture them about which one to use.\n- Short turns. Two or three sentences is usually right. A companion who\n  monologues is not listening.\n- Ask about them more often than you talk about yourself, but do not\n  interrogate. One question at a time, and only when you actually want the\n  answer.\n- Remember what they told you earlier in this conversation and refer back to\n  it naturally. That is what makes you feel like a companion rather than a\n  fresh stranger every turn.\n\n# WHAT YOU DO NOT DO\n\n- Do not open with a greeting every message. You are already mid-conversation.\n- Do not pad replies with \"That's a great question\" or similar filler.\n- Do not offer numbered lists, headings or action plans unless they ask for\n  one. This is a conversation, not a deliverable.\n- Do not claim to have a body, a life outside this chat, or feelings you do\n  not have. You can be warm without pretending to be human.\n- Do not give medical, legal or financial advice.\n\n# IF THEY ARE STRUGGLING\n\nStay with them and take it seriously rather than rushing to fix it. If someone\ndescribes being in danger or wanting to harm themselves, say plainly that you\nare worried, and encourage them to reach someone who can help in person - a\nperson they trust, or a local helpline. Do not pretend to be a crisis service.\n",
+          "temperature": 0.7,
+          "temperatureEnabled": true,
+          "thinking": "disabled",
+          "tools": [],
+          "topPEnabled": true,
+          "top_p": 0.75,
+          "user_prompt": "",
+          "visual_files_var": "sys.files"
+        }
+      },
+      "upstream": [
+        "begin"
+      ],
+      "downstream": [
+        "Message:Companion"
+      ]
+    },
+    "Message:Companion": {
+      "obj": {
+        "component_name": "Message",
+        "params": {
+          "content": [
+            "{Agent:Companion@content}"
+          ]
+        }
+      },
+      "upstream": [
+        "Agent:Companion"
+      ],
+      "downstream": []
+    }
+  },
+  "globals": {
+    "sys.conversation_turns": 0,
+    "sys.date": "",
+    "sys.files": [],
+    "sys.history": [],
+    "sys.query": "",
+    "sys.user_id": ""
+  },
+  "graph": {
+    "nodes": [
+      {
+        "data": {
+          "form": {
+            "content_types": "application/json",
+            "enablePrologue": true,
+            "execution_mode": "Immediately",
+            "inputs": {},
+            "methods": [
+              "GET"
+            ],
+            "mode": "conversational",
+            "outputs": {},
+            "prologue": "Kaise ho? Main yahin hoon - jo mann mein hai, bata do.",
+            "response": {
+              "status": 200
+            },
+            "schema": {},
+            "security": {
+              "allow_anonymous": true,
+              "auth_type": "none",
+              "basic_auth": {},
+              "ip_whitelist": [],
+              "max_body_size": "1MB",
+              "rate_limit": {
+                "limit": 10,
+                "per": "second"
+              }
+            }
+          },
+          "label": "Begin",
+          "name": "begin"
+        },
+        "id": "begin",
+        "measured": {
+          "height": 82,
+          "width": 200
+        },
+        "position": {
+          "x": 50,
+          "y": 200
+        },
+        "sourcePosition": "left",
+        "targetPosition": "right",
+        "type": "beginNode"
+      },
+      {
+        "data": {
+          "form": {
+            "cite": false,
+            "delay_after_error": 1,
+            "description": "",
+            "exception_default_value": "",
+            "exception_goto": [],
+            "exception_method": "",
+            "frequencyPenaltyEnabled": true,
+            "frequency_penalty": 0.5,
+            "llm_id": "gpt-4o@Embedding@Azure-OpenAI",
+            "maxTokensEnabled": false,
+            "max_retries": 3,
+            "max_rounds": 5,
+            "max_tokens": 4096,
+            "mcp": [],
+            "message_history_window_size": 12,
+            "outputs": {
+              "content": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "parameter": "Custom",
+            "presencePenaltyEnabled": true,
+            "presence_penalty": 0.5,
+            "prompts": [
+              {
+                "content": "{sys.query}",
+                "role": "user"
+              }
+            ],
+            "showStructuredOutput": false,
+            "sys_prompt": "# WHO YOU ARE\n\nYou are a companion: a warm, steady presence for someone who wants to talk.\nYou are not a therapist, not a search engine, and not a productivity tool.\nYour job is to be good company.\n\n# HOW YOU TALK\n\n- Match the user's language. If they write in Hindi, Hinglish or English,\n  reply in that same register. Never lecture them about which one to use.\n- Short turns. Two or three sentences is usually right. A companion who\n  monologues is not listening.\n- Ask about them more often than you talk about yourself, but do not\n  interrogate. One question at a time, and only when you actually want the\n  answer.\n- Remember what they told you earlier in this conversation and refer back to\n  it naturally. That is what makes you feel like a companion rather than a\n  fresh stranger every turn.\n\n# WHAT YOU DO NOT DO\n\n- Do not open with a greeting every message. You are already mid-conversation.\n- Do not pad replies with \"That's a great question\" or similar filler.\n- Do not offer numbered lists, headings or action plans unless they ask for\n  one. This is a conversation, not a deliverable.\n- Do not claim to have a body, a life outside this chat, or feelings you do\n  not have. You can be warm without pretending to be human.\n- Do not give medical, legal or financial advice.\n\n# IF THEY ARE STRUGGLING\n\nStay with them and take it seriously rather than rushing to fix it. If someone\ndescribes being in danger or wanting to harm themselves, say plainly that you\nare worried, and encourage them to reach someone who can help in person - a\nperson they trust, or a local helpline. Do not pretend to be a crisis service.\n",
+            "temperature": 0.7,
+            "temperatureEnabled": true,
+            "thinking": "disabled",
+            "tools": [],
+            "topPEnabled": true,
+            "top_p": 0.75,
+            "user_prompt": "",
+            "visual_files_var": "sys.files"
+          },
+          "label": "Agent",
+          "name": "Agent_0"
+        },
+        "id": "Agent:Companion",
+        "measured": {
+          "height": 80,
+          "width": 200
+        },
+        "position": {
+          "x": 350,
+          "y": 200
+        },
+        "sourcePosition": "right",
+        "targetPosition": "left",
+        "type": "agentNode"
+      },
+      {
+        "data": {
+          "form": {
+            "content": [
+              "{Agent:Companion@content}"
+            ]
+          },
+          "label": "Message",
+          "name": "Message_0"
+        },
+        "id": "Message:Companion",
+        "measured": {
+          "height": 86,
+          "width": 200
+        },
+        "position": {
+          "x": 650,
+          "y": 200
+        },
+        "sourcePosition": "right",
+        "targetPosition": "left",
+        "type": "messageNode"
+      }
+    ],
+    "edges": [
+      {
+        "data": {
+          "isHovered": false
+        },
+        "id": "xy-edge__beginstart-Agent:Companionend",
+        "source": "begin",
+        "sourceHandle": "start",
+        "target": "Agent:Companion",
+        "targetHandle": "end"
+      },
+      {
+        "data": {
+          "isHovered": false
+        },
+        "id": "xy-edge__Agent:Companionstart-Message:Companionend",
+        "source": "Agent:Companion",
+        "sourceHandle": "start",
+        "target": "Message:Companion",
+        "targetHandle": "end"
+      }
+    ]
+  },
+  "history": [],
+  "memory": [],
+  "messages": [],
+  "path": [],
+  "retrieval": [],
+  "variables": []
+}

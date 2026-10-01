@@ -1,0 +1,58 @@
+[
+  {
+    "regionCode": "MH",
+    "region": "Maharashtra",
+    "defaultDeityId": "tulja_bhavani",
+    "isNationalFallback": false,
+    "caveat": "Most widely held kuldevi across Maratha and Deccan families."
+  },
+  {
+    "regionCode": "GJ",
+    "region": "Gujarat",
+    "defaultDeityId": "ambaji",
+    "isNationalFallback": false,
+    "caveat": "Pan-Gujarat mother goddess; safe when community is unknown."
+  },
+  {
+    "regionCode": "RJ-W",
+    "region": "Rajasthan — Marwar",
+    "defaultDeityId": "nagnechi",
+    "isNationalFallback": false,
+    "caveat": "Default only when Rathore signal is present; else Ashapura (Nadol) or Kuldevi (unnamed)."
+  },
+  {
+    "regionCode": "RJ-NE",
+    "region": "Rajasthan — Shekhawati",
+    "defaultDeityId": "jeen_mata",
+    "isNationalFallback": false,
+    "caveat": "Dominant among Agarwal and Marwari Bania families of the region."
+  },
+  {
+    "regionCode": "RJ-E",
+    "region": "Rajasthan — Dhundhar/Jaipur",
+    "defaultDeityId": "shakambhari",
+    "isNationalFallback": false,
+    "caveat": "Broad across Chauhan and Khandelwal families."
+  },
+  {
+    "regionCode": "RJ-S",
+    "region": "Rajasthan — Mewar",
+    "defaultDeityId": "ban_mata",
+    "isNationalFallback": false,
+    "caveat": "Sisodia line; else Ambaji for southern districts."
+  },
+  {
+    "regionCode": "KA-N",
+    "region": "Karnataka (north)",
+    "defaultDeityId": "renuka_mahur",
+    "isNationalFallback": false,
+    "caveat": "Southern form of the same devi."
+  },
+  {
+    "regionCode": "ALL",
+    "region": "Any / unknown",
+    "defaultDeityId": "hanuman_ji",
+    "isNationalFallback": true,
+    "caveat": "THE TRUE FALLBACK. Gotra-sankalp path. Never claims a name."
+  }
+]

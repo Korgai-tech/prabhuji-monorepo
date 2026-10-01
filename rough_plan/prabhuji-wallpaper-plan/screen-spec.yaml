@@ -1,0 +1,632 @@
+design_execution_package:
+  app: Prabhuji
+  module: Wallpaper
+  screen_or_flow: Module Spec
+  version: v1.0
+  status: approved
+  package_type: module_wise_design_execution_package
+  approval_required_before_export: false
+  recommended_drive_wiki_path: Prabhuji / Wallpaper / Module Spec / v1.0
+
+source:
+  figma_file_key: ipSvV1FnmzvV8TK2Ig8Aiq
+  figma_urls:
+    main_module: https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=712-7121&t=TzCwzI6RZASLubyK-1
+    wallpaper_home: https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=704-5223&t=TzCwzI6RZASLubyK-1
+    deity_listing: https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=707-6427&t=TzCwzI6RZASLubyK-1
+    static_preview: https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=282-2812&t=TzCwzI6RZASLubyK-1
+    live_preview: https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=712-6622&t=TzCwzI6RZASLubyK-1
+  node_ids:
+    main_module_section: '712:7121'
+    wallpaper_home: '704:5223'
+    deity_listing: '707:6427'
+    static_preview: '282:2812'
+    live_preview: '712:6622'
+  frame_names:
+    - Wallpaper
+    - Wallpapers Home
+    - Wallpapers
+    - Static Wallpaper
+    - Live Wallpaper
+
+product_intent:
+  purpose: Let logged-in users discover, preview, like, share, and set devotional static and live wallpapers.
+  primary_user_goal: Find a devotional wallpaper and apply it to the device after previewing it.
+  primary_business_goal: Convert free users to Pro when they show intent to set a wallpaper.
+  design_principle:
+    - DP01 Devotional First, Feed Second
+    - DP02 Preserve Sacred Visual Dignity
+    - DP05 Pro as Added Devotional Value
+    - DP08 Lightweight, Readable, Small-Screen First
+
+access_model:
+  login_requirement:
+    phase_1_rule: Users cannot use the app unless logged in.
+    module_logged_out_handling_required: false
+    confidence: confirmed
+  free_user:
+    can_view:
+      - Wallpaper Home
+      - deity filter row
+      - CMS homepage rows
+      - category/listing pages
+      - static wallpaper preview
+      - live wallpaper preview
+    can_do:
+      - browse wallpapers
+      - filter by deity
+      - open preview
+      - vertical swipe through preview feed
+      - like and unlike wallpapers
+      - share deep link plus preview thumbnail
+    cannot_do:
+      - set static wallpaper as home screen
+      - set static wallpaper as lock screen
+      - set live wallpaper as home screen
+      - save full-resolution wallpaper to device gallery in Phase 1
+    paywall_triggers:
+      - element: Set Wallpaper
+        trigger: Free user taps Set Wallpaper on static or live preview.
+        result: Open unified paywall.
+        confidence: confirmed
+      - element: Set Lockscreen
+        trigger: Free user taps Set Lockscreen on static preview.
+        result: Open unified paywall.
+        confidence: confirmed
+    should_not_show:
+      - paywall on Wallpaper Home load
+      - paywall on deity filter tap
+      - paywall on listing open
+      - paywall on preview open
+      - paywall on like
+      - paywall on share
+      - lock badges on discovery cards
+      - Pro badges on discovery cards
+  pro_user:
+    can_view:
+      - same Wallpaper UI as free user
+    can_do:
+      - all free user actions
+      - set static wallpaper as home screen
+      - set static wallpaper as lock screen
+      - set live wallpaper as home screen
+    paywall_triggers: []
+    should_not_show:
+      - paywall on set actions
+
+screen_structure:
+  screens:
+    - id: wallpaper_home
+      name: Wallpaper Home
+      source: Figma node 704:5223
+      visible_elements:
+        - status bar
+        - top app bar
+        - back button
+        - title Wallpapers
+        - horizontal deity filter row
+        - All Gods pinned category
+        - deity category items
+        - CMS horizontal wallpaper rows
+        - Top Live Wallpapers row
+        - New Wallpapers row
+        - Trending Wallpaper row
+        - Liked Wallpaper row
+      interactions:
+        - element: back_button
+          action: tap
+          result: Navigate to previous screen, usually Home when entered from Home Set Wallpaper card.
+          confidence: confirmed
+        - element: deity_filter_item
+          action: tap
+          result: Open listing page filtered to selected deity.
+          confidence: confirmed
+        - element: all_gods_filter
+          action: tap
+          result: Open all wallpapers feed or listing.
+          confidence: confirmed
+        - element: wallpaper_card
+          action: tap
+          result: Open wallpaper preview using the tapped row as preview source context.
+          confidence: confirmed
+        - element: row_show_all
+          action: tap
+          result: Open listing for that CMS row if Show all is present.
+          confidence: assumed
+      rules:
+        - Deity filters are separate from custom categories.
+        - Custom categories appear as CMS-controlled horizontal rows below deity filters.
+        - CMS can add, remove, reorder, rename, and configure homepage rows.
+        - Hide empty rows.
+        - Liked Wallpaper row is personalized and hidden when empty.
+        - Do not implement hidden or unrelated Figma artifacts.
+    - id: wallpaper_listing
+      name: Deity or Row Listing
+      source: Figma node 707:6427
+      visible_elements:
+        - status bar
+        - top app bar
+        - back button
+        - dynamic title, e.g. Durga Ma Wallpapers
+        - two-column wallpaper grid
+        - vertical image cards
+        - LIVE badge on live/video wallpaper cards
+      interactions:
+        - element: back_button
+          action: tap
+          result: Return to Wallpaper Home or previous source screen.
+          confidence: confirmed
+        - element: wallpaper_grid_card
+          action: tap
+          result: Open preview for tapped wallpaper and preserve current listing as preview source context.
+          confidence: confirmed
+        - element: live_badge
+          action: view
+          result: Indicates wallpaper is live/video; badge is not separately tappable.
+          confidence: confirmed
+      rules:
+        - Listing uses two-column grid.
+        - LIVE badge appears only for live/video wallpapers.
+        - Static wallpapers do not need a badge in Phase 1.
+        - Listing should support pagination or infinite load for large CMS result sets.
+    - id: static_wallpaper_preview
+      name: Static Wallpaper Preview
+      source: Figma node 282:2812 and section child under 712:7121
+      visible_elements:
+        - full-screen devotional image
+        - gradient overlay for UI readability
+        - back button
+        - right engagement rail
+        - like icon and like count
+        - WhatsApp/share icon and share count
+        - set count text
+        - Set Wallpaper button
+        - Set Lockscreen button
+      interactions:
+        - element: back_button
+          action: tap
+          result: Return to previous source screen and preserve source scroll position if feasible.
+          confidence: confirmed
+        - element: preview_surface
+          action: vertical_swipe_up
+          result: Move to next wallpaper in the same source context.
+          confidence: confirmed
+        - element: preview_surface
+          action: vertical_swipe_down
+          result: Move to previous wallpaper in the same source context.
+          confidence: confirmed
+        - element: like_button
+          action: tap
+          result: Toggle liked state and update like count/UI.
+          confidence: confirmed
+        - element: whatsapp_share_button
+          action: tap
+          result: Open WhatsApp share directly if available; otherwise native share sheet.
+          confidence: confirmed
+        - element: set_wallpaper_button
+          action: tap_by_free_user
+          result: Open unified paywall.
+          confidence: confirmed
+        - element: set_wallpaper_button
+          action: tap_by_pro_user
+          result: Start Android flow to set static image as home screen wallpaper.
+          confidence: confirmed
+        - element: set_lockscreen_button
+          action: tap_by_free_user
+          result: Open unified paywall.
+          confidence: confirmed
+        - element: set_lockscreen_button
+          action: tap_by_pro_user
+          result: Start Android flow to set static image as lock screen wallpaper.
+          confidence: confirmed
+      rules:
+        - Static preview has two set buttons.
+        - Set Wallpaper means home screen.
+        - Set Lockscreen means lock screen.
+        - Use system-level Android wallpaper flow where possible.
+        - If Android shows a chooser, preselect or label based on tapped action where possible.
+        - Do not cover deity faces or sacred symbols with aggressive UI.
+    - id: live_wallpaper_preview
+      name: Live Wallpaper Preview
+      source: Figma node 712:6622 and section child under 712:7121
+      visible_elements:
+        - full-screen live/video preview
+        - gradient overlay for UI readability
+        - back button
+        - right engagement rail
+        - like icon and like count
+        - WhatsApp/share icon and share count
+        - set count text
+        - Set Wallpaper button
+      interactions:
+        - element: back_button
+          action: tap
+          result: Return to previous source screen and preserve source scroll position if feasible.
+          confidence: confirmed
+        - element: preview_surface
+          action: vertical_swipe_up
+          result: Move to next wallpaper in the same source context; pause previous live preview and play active preview.
+          confidence: confirmed
+        - element: preview_surface
+          action: vertical_swipe_down
+          result: Move to previous wallpaper in the same source context; pause previous live preview and play active preview.
+          confidence: confirmed
+        - element: live_preview_media
+          action: enters_active_view
+          result: Autoplay muted loop.
+          confidence: confirmed
+        - element: live_preview_media
+          action: leaves_active_view
+          result: Pause or stop playback.
+          confidence: confirmed
+        - element: like_button
+          action: tap
+          result: Toggle liked state and update like count/UI.
+          confidence: confirmed
+        - element: whatsapp_share_button
+          action: tap
+          result: Open WhatsApp share directly if available; otherwise native share sheet.
+          confidence: confirmed
+        - element: set_wallpaper_button
+          action: tap_by_free_user
+          result: Open unified paywall.
+          confidence: confirmed
+        - element: set_wallpaper_button
+          action: tap_by_pro_user
+          result: Start Android flow to set live/video wallpaper as home screen wallpaper.
+          confidence: confirmed
+      rules:
+        - Live/video preview has only Set Wallpaper.
+        - Live/video wallpapers can only be set as home screen wallpaper in Phase 1.
+        - Do not show Set Lockscreen for live/video wallpapers.
+        - Live preview is muted.
+        - Wallpapers have no sound.
+        - Only one live preview plays at a time.
+
+wallpaper_home_behavior:
+  entry_points:
+    - source: Home Set Wallpaper feature card
+      result: Open Wallpaper Home
+      confidence: confirmed
+  deity_filters:
+    source: CMS
+    all_gods_pinned_first: true
+    custom_categories_in_deity_row: false
+    confidence: confirmed
+  homepage_rows:
+    source: CMS
+    cms_can_add_remove_reorder: true
+    initial_phase_1_rows:
+      - Top Live Wallpapers
+      - New Wallpapers
+      - Trending Wallpaper
+      - Liked Wallpaper
+    custom_categories_render_as_rows: true
+    hide_empty_rows: true
+    liked_row:
+      personalized_to_current_user: true
+      hide_when_no_likes: true
+      confidence: confirmed
+  visible_artifact_rule:
+    implement_only_visible_design_elements: true
+    ignore_hidden_or_unrelated_figma_layers: true
+    confidence: confirmed
+
+preview_behavior:
+  vertical_reels_like_scroll:
+    enabled: true
+    confidence: confirmed
+  source_context_preservation:
+    category_grid: Continue through same category list.
+    homepage_row: Continue through same homepage row list.
+    all_gods: Continue through all wallpapers feed.
+    confidence: confirmed
+  media_rules:
+    static_wallpaper:
+      preview_type: full_screen_image
+      set_options:
+        - home_screen
+        - lock_screen
+    live_wallpaper:
+      preview_type: autoplay_muted_loop
+      has_audio: false
+      set_options:
+        - home_screen
+      lock_screen_supported_in_phase_1: false
+  sacred_visual_rules:
+    - Do not cover deity faces with CTAs or badges.
+    - Keep overlays minimal and readable.
+    - Use gradient overlay only for readability.
+
+engagement_rules:
+  like:
+    available_to_free_user: true
+    available_to_pro_user: true
+    login_required: true
+    phase_1_logged_in_app_required: true
+    persistence: user_account_backend
+    optimistic_update: true
+    failure_behavior: Revert UI and show simple error.
+    confidence: confirmed
+  share:
+    available_to_free_user: true
+    available_to_pro_user: true
+    primary_destination: WhatsApp
+    fallback: native_share_sheet
+    payload:
+      - Prabhuji deep link
+      - preview image thumbnail
+    should_not_share:
+      - original full-resolution image file
+      - original video/live wallpaper file
+    confidence: confirmed
+  counts:
+    source: backend
+    formatted_display: true
+    like_count: backend_count
+    share_count: backend_count
+    set_count: backend_count
+    set_count_increment_rule: Increment only after successful set.
+    confidence: confirmed
+
+set_wallpaper_behavior:
+  static_wallpaper:
+    set_wallpaper_button:
+      target: home_screen
+      free_user_result: unified_paywall
+      pro_user_result: android_system_wallpaper_flow
+      confidence: confirmed
+    set_lockscreen_button:
+      target: lock_screen
+      free_user_result: unified_paywall
+      pro_user_result: android_system_lockscreen_flow
+      confidence: confirmed
+  live_wallpaper:
+    set_wallpaper_button:
+      target: home_screen
+      free_user_result: unified_paywall
+      pro_user_result: android_live_wallpaper_flow
+      confidence: confirmed
+    set_lockscreen_button_visible: false
+  android_flow:
+    use_system_level_flow_where_possible: true
+    preselect_or_label_android_chooser_where_possible: true
+    unsupported_message: This device does not support this wallpaper action.
+    custom_permission_education_phase_1: false
+    confidence: confirmed
+  paywall_return:
+    after_purchase: Return to same preview.
+    resume_intended_action: Automatically resume intended set action if technically safe.
+    if_resume_not_safe: Keep user on same preview and let user tap Set again.
+    confidence: confirmed
+  downloads:
+    user_visible_downloads_phase_1: false
+    temporary_cache_allowed_for:
+      - preview
+      - share_thumbnail
+      - set_flow
+    confidence: confirmed
+
+live_wallpaper_technical_requirements:
+  preview_asset: video_preview_url
+  set_asset: android_compatible_live_wallpaper_asset_or_package_or_rendered_video_asset
+  final_method_owner: Engineering
+  autoplay: true
+  muted: true
+  loop: true
+  one_active_preview_at_a_time: true
+  confidence: partially_confirmed
+
+data_requirements:
+  cms:
+    wallpaper:
+      required_fields:
+        - id
+        - title
+        - media_type: static | live
+        - thumbnail_url
+        - preview_image_url
+        - preview_video_url for live wallpapers
+        - apply_asset_url for static wallpapers
+        - live_wallpaper_asset_url_or_package_reference for live wallpapers
+        - deity_tags
+        - custom_category_tags
+        - is_active
+        - display_order
+        - created_at
+        - updated_at
+        - like_count
+        - share_count
+        - set_count
+      recommended_fields:
+        - alt_text
+        - focal_point
+        - safe_area_metadata
+        - sacred_face_region_metadata
+        - dominant_color
+        - file_size
+        - video_duration_seconds
+        - supported_android_versions
+        - fallback_static_thumbnail_url
+    deity_category:
+      required_fields:
+        - id
+        - name
+        - icon_image_url
+        - category_type: deity
+        - display_order
+        - is_active
+      rules:
+        - All Gods is pinned first.
+        - Custom categories do not appear in deity row.
+    homepage_row:
+      required_fields:
+        - id
+        - title
+        - row_type: top_live | new | trending | liked | custom
+        - display_order
+        - is_active
+        - wallpaper_ids_or_query_rules
+      recommended_fields:
+        - icon_key
+        - media_type_filter
+        - deity_tag_filter
+        - custom_category_tag_filter
+        - max_items
+        - sort_rule
+      rules:
+        - CMS can add, remove, reorder, rename, and configure rows.
+        - Empty rows are hidden.
+        - Liked row is personalized and hidden when user has no likes.
+    user_likes:
+      required_fields:
+        - user_id
+        - wallpaper_id
+        - liked_at
+  share_payload:
+    required_fields:
+      - deep_link_url
+      - preview_thumbnail_url
+      - share_title
+      - share_text
+    should_not_include:
+      - full_resolution_media_file
+      - original_video_file
+
+states:
+  loading_home:
+    description: Show lightweight placeholders for deity row and homepage rows while CMS loads.
+  loading_listing:
+    description: Show grid placeholders while listing content loads.
+  loading_preview:
+    description: Show thumbnail or neutral placeholder until full image/video preview is ready.
+  empty_home:
+    description: If all CMS rows are empty, show calm empty state and retry. Keep deity row if available.
+  empty_row:
+    description: Hide row when CMS returns no wallpapers for that row.
+  empty_liked_row:
+    description: Hide Liked Wallpaper row when current user has no liked wallpapers.
+  empty_listing:
+    description: Show No wallpapers available yet and keep back navigation.
+  cms_partial_failure:
+    description: Show rows that loaded; hide failed rows and avoid blocking entire page.
+  cms_total_failure:
+    description: Show retry CTA and do not crash.
+  image_load_failure:
+    description: Show neutral devotional placeholder or retry; do not show broken image icon.
+  live_preview_failure:
+    description: Show static thumbnail fallback if available; disable set if required set asset is unavailable.
+  offline_with_cache:
+    description: Show cached thumbnails if available; block preview/set when required asset is missing.
+  offline_without_cache:
+    description: Show offline error and retry.
+  unsupported_device_action:
+    description: Show This device does not support this wallpaper action.
+  set_failure:
+    description: Show simple failure message and allow retry. Do not increment set count.
+  set_success:
+    description: Show calm success confirmation and increment set count after confirmed success.
+  paywall_cancelled:
+    description: Return to same preview without setting wallpaper or incrementing set count.
+
+analytics_events:
+  - event_name: wallpaper_home_opened
+    trigger: User opens Wallpaper Home.
+    required: true
+  - event_name: wallpaper_deity_filter_tapped
+    trigger: User taps a deity filter or All Gods.
+    required: true
+  - event_name: wallpaper_home_row_viewed
+    trigger: A CMS homepage row becomes visible.
+    required: false
+  - event_name: wallpaper_home_row_item_tapped
+    trigger: User taps a wallpaper card from a homepage row.
+    required: true
+  - event_name: wallpaper_listing_opened
+    trigger: User opens a deity or row listing.
+    required: true
+  - event_name: wallpaper_grid_item_tapped
+    trigger: User taps a wallpaper in listing grid.
+    required: true
+  - event_name: wallpaper_preview_opened
+    trigger: Static or live wallpaper preview opens.
+    required: true
+  - event_name: wallpaper_preview_swiped
+    trigger: User swipes to previous or next wallpaper in preview.
+    required: true
+  - event_name: wallpaper_live_preview_played
+    trigger: Live wallpaper preview starts autoplay.
+    required: false
+  - event_name: wallpaper_like_toggled
+    trigger: User likes or unlikes a wallpaper.
+    required: true
+  - event_name: wallpaper_share_tapped
+    trigger: User taps WhatsApp/share button.
+    required: true
+  - event_name: wallpaper_set_tapped
+    trigger: User taps Set Wallpaper or Set Lockscreen.
+    required: true
+  - event_name: wallpaper_paywall_shown
+    trigger: Free user sees unified paywall after set intent.
+    required: true
+  - event_name: wallpaper_paywall_purchase_success
+    trigger: User successfully subscribes from wallpaper paywall flow.
+    required: true
+  - event_name: wallpaper_set_success
+    trigger: Wallpaper set action succeeds.
+    required: true
+  - event_name: wallpaper_set_failed
+    trigger: Wallpaper set action fails.
+    required: true
+  - event_name: wallpaper_unsupported_device_action_shown
+    trigger: Unsupported wallpaper action message is shown.
+    required: true
+
+qa_checks:
+  - Wallpaper Home opens from the Home Set Wallpaper card.
+  - Wallpaper Home does not show a paywall on load for free users.
+  - The top category row contains deity filters and does not contain custom CMS categories.
+  - All Gods appears first in the deity filter row.
+  - CMS can add, remove, reorder, rename, and configure homepage rows without app release.
+  - Empty CMS rows are hidden.
+  - Liked Wallpaper row is hidden when the user has no liked wallpapers.
+  - Tapping a deity opens a listing filtered to that deity.
+  - Listing page uses a two-column vertical wallpaper grid.
+  - LIVE badge appears only on live/video wallpaper cards.
+  - Tapping a wallpaper card opens preview.
+  - Preview vertical swipe preserves the source context.
+  - Static preview shows Set Wallpaper and Set Lockscreen.
+  - Live preview shows only Set Wallpaper.
+  - Live preview autoplays muted and loops.
+  - Only one live wallpaper preview plays at a time.
+  - Wallpapers do not play sound.
+  - Free users can preview static wallpapers without paywall.
+  - Free users can preview live wallpapers without paywall.
+  - Free users can like and unlike wallpapers without paywall.
+  - Free users can share wallpapers without paywall.
+  - Free users tapping Set Wallpaper see the unified paywall.
+  - Free users tapping Set Lockscreen see the unified paywall.
+  - Pro users tapping Set Wallpaper do not see paywall.
+  - Pro users tapping Set Lockscreen do not see paywall.
+  - Static Set Wallpaper targets home screen where Android supports it.
+  - Static Set Lockscreen targets lock screen where Android supports it.
+  - Live Set Wallpaper targets home screen only.
+  - Unsupported Android wallpaper actions show This device does not support this wallpaper action.
+  - Set count increments only after successful set.
+  - Share payload includes deep link and preview thumbnail.
+  - Share payload does not include the original full-resolution media file.
+  - WhatsApp direct share is attempted first.
+  - Native share sheet opens when WhatsApp is unavailable.
+  - No user-visible download or save-to-gallery action appears in Phase 1.
+  - Hidden or unrelated Figma artifacts are not implemented.
+  - Overlay controls do not cover deity faces or important sacred symbols.
+
+handoff_readiness:
+  ready_for_dev_discussion: true
+  ready_for_final_build: true
+  remaining_questions_file: open-questions.yaml
+  approval_status: approved
+  notes:
+    - Live wallpaper technical method needs engineering validation but product behavior is approved.
+    - Android device support matrix needs engineering QA planning.
+    - CMS row performance limits need CMS/engineering agreement.

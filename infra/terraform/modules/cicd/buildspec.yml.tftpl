@@ -1,0 +1,102 @@
+version: 0.2
+
+# CI + CD in one project (CodeBuild is this repo's only pipeline — the GitHub
+# Actions workflows were removed). The verify gates run BEFORE any image is
+# built: a red gate = no images pushed, no service rolled (post_build
+# additionally guards on CODEBUILD_BUILD_SUCCEEDING).
+# NOT run here (need SDKs/emulators this image lacks): pnpm verify:mobile,
+# pnpm e2e:web / e2e:android — run those locally before merging.
+
+env:
+  variables:
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    # api integration suite placeholders — testcontainers overwrites
+    # DATABASE_URL with the real container URI at runtime
+    JWT_SECRET: ci-integration-only-not-a-real-secret
+    DATABASE_URL: postgres://placeholder:placeholder@localhost:5432/placeholder
+
+phases:
+  install:
+    commands:
+      # the repo pins Node 22 (engines >=22 <23); pnpm comes from the
+      # package.json "packageManager" field via corepack
+      - n 22 && hash -r && node --version
+      - corepack enable
+  pre_build:
+    commands:
+      - COMMIT_SHA="$CODEBUILD_RESOLVED_SOURCE_VERSION"
+      # Docker Hub auth FIRST, before any gate. The gates pull from Docker Hub
+      # long before the ECR login further down: postgres:18-alpine (testcontainers,
+      # plus its ryuk reaper) in the api suite, floci/floci in the events suite,
+      # and clickhouse/clickhouse-server for ch-check. CodeBuild runs outside the
+      # VPC on shared AWS egress addresses, so an anonymous pull draws on a per-IP
+      # bucket shared with every other tenant on that address — it fails with
+      # HTTP 429 `toomanyrequests` with no app code involved, and both pipelines
+      # went red that way. Guarded like the ClickHouse step: unset creds = the
+      # previous anonymous behaviour, not a hard failure.
+      - if [ -n "$DOCKERHUB_TOKEN" ]; then echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin; else echo "DOCKERHUB_TOKEN unset - pulling Docker Hub images anonymously (shared per-IP rate limit applies)"; fi
+      # --- CI gates (same suite the deleted GitHub Actions workflow ran) ---
+      - pnpm install --frozen-lockfile
+      - pnpm --dir apps/api exec prisma generate
+      - pnpm verify
+      - pnpm nx test api --configuration=integration
+      - pnpm nx test events --configuration=integration
+      # ch-check needs a throwaway LOCAL ClickHouse — the nx target no longer starts one
+      - docker compose up -d --wait clickhouse
+      - pnpm nx run events:ch-check
+      # --- gates green: apply warehouse migrations to Cloud, then prepare images ---
+      # Env-driven: CLICKHOUSE_ENV/_HOST/_USER/_PASSWORD come from the CodeBuild
+      # environment (modules/cicd plaintext_env + secret_env). Idempotent (no-op when
+      # nothing pending); skipped entirely when Cloud creds are not wired.
+      - if [ -n "$CLICKHOUSE_HOST" ]; then pnpm nx run events:migrate; else echo "CLICKHOUSE_HOST unset - skipping warehouse migration"; fi
+      - aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${registry}
+  build:
+    commands:
+%{ for s in services ~}
+      - docker build -f ${s.dockerfile}${join("", [for k, v in s.build_args : " --build-arg ${k}=${v}"])} -t ${s.ecr_repository_url}:$COMMIT_SHA -t ${s.ecr_repository_url}:latest .
+      - docker push ${s.ecr_repository_url}:$COMMIT_SHA
+      - docker push ${s.ecr_repository_url}:latest
+%{ endfor ~}
+%{ for st in static_sites ~}
+      - ${join(" ", [for k, v in st.build_env : "${k}=${v}"])} pnpm nx build ${st.nx_project}
+%{ endfor ~}
+  post_build:
+    commands:
+      # post_build runs even when build failed — never roll services on a red build
+      - test "$CODEBUILD_BUILD_SUCCEEDING" = "1" || { echo "build failed - skipping deploy"; exit 1; }
+%{ if migrate != null ~}
+      # --- db migrate: schema leads code -------------------------------------
+      # Mirrors scripts/deploy-infra.sh step 5 (keep the two in sync). Runs HERE
+      # — after the images are pushed, before any service rolls — because the
+      # task-def references :latest, so this task runs the image this build just
+      # produced, and a non-zero exit aborts before update-service.
+      # CodeBuild scores a multi-line command by its LAST line; `set -e` is what
+      # makes an intermediate failure (notably the waiter) fail the build.
+      - |
+        set -e
+        echo "==> db migrate (one-off Fargate task)"
+        TASK_ARN=$(aws ecs run-task --region ${region} --cluster ${cluster_name} \
+          --launch-type FARGATE \
+          --task-definition ${migrate.task_definition_family} \
+          --network-configuration 'awsvpcConfiguration={subnets=[${join(",", migrate.subnet_ids)}],securityGroups=[${join(",", migrate.security_group_ids)}],assignPublicIp=DISABLED}' \
+          --overrides '${jsonencode({ containerOverrides = [{ name = migrate.container_name, command = migrate.command }] })}' \
+          --query 'tasks[0].taskArn' --output text)
+        [ -n "$TASK_ARN" ] && [ "$TASK_ARN" != "None" ] || { echo "failed to start migrate task"; exit 1; }
+        echo "    task $${TASK_ARN##*/} - waiting for it to stop..."
+        aws ecs wait tasks-stopped --region ${region} --cluster ${cluster_name} --tasks "$TASK_ARN"
+        # Select by container NAME, not containers[0]: with telemetry on the task
+        # def carries an otel-collector sidecar too, and describe-tasks does not
+        # guarantee container ordering. Reading [0] could pick up the stopped
+        # collector's non-zero code and abort a perfectly good deploy.
+        CODE=$(aws ecs describe-tasks --region ${region} --cluster ${cluster_name} --tasks "$TASK_ARN" \
+          --query "tasks[0].containers[?name=='${migrate.container_name}'].exitCode | [0]" --output text)
+        [ "$CODE" = "0" ] || { echo "migration exited $CODE - see CloudWatch /ecs/${migrate.container_name}"; exit 1; }
+        echo "    migrations applied"
+%{ endif ~}
+%{ for s in services ~}
+      - aws ecs update-service --region ${region} --cluster ${cluster_name} --service ${s.service_name} --force-new-deployment
+%{ endfor ~}
+%{ for st in static_sites ~}
+      - aws s3 sync ${st.dist_dir} s3://${st.bucket} --delete --region ${region}
+      - aws cloudfront create-invalidation --distribution-id ${st.distribution_id} --paths "/*"
+%{ endfor ~}

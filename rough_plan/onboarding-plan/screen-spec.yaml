@@ -1,0 +1,871 @@
+design_execution_package:
+  app: Prabhuji
+  module: Onboarding + Paywall
+  screen_or_flow: Splash, Phone Login, OTP, Name + Language, VIP Paywall
+  version: v1.0
+  status: approved
+  package_type: module_wise_design_execution_package
+  approval_required_before_export: false
+
+source:
+  figma_file_key: ipSvV1FnmzvV8TK2Ig8Aiq
+  figma_urls:
+    main_module: https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=520-4992&t=TzCwzI6RZASLubyK-1
+    language_selector_and_name: https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=406-2953&t=TzCwzI6RZASLubyK-1
+    paywall_after_language_selection: https://www.figma.com/design/ipSvV1FnmzvV8TK2Ig8Aiq/Prabhuji?node-id=493-3349&t=TzCwzI6RZASLubyK-1
+  node_ids:
+    onboarding_paywall_section: '520:4992'
+    language_frame: '406:2953'
+    paywall_frame: '493:3349'
+  frame_names:
+    - Onboarding+Paywall
+    - Splash
+    - Phone Choice
+    - Phone input
+    - OTP
+    - OTP-wrong
+    - Language
+    - Paywall
+  visual_verification:
+    figma_data_source: harness_fetched_node_json_and_rendered_snapshots
+    notes:
+      - Child frame-level node IDs were not exposed individually in the harness JSON, so parent section and frame node IDs are used where needed.
+      - Splash was visually detected in the rendered snapshot of node 520:4992.
+      - Paywall includes some stray placeholder node copy in the raw node structure; visible Prabhuji VIP paywall copy and this spec override those artifacts.
+
+product_intent:
+  purpose: Get users into Prabhuji through mandatory phone OTP onboarding, capture name and language, and introduce VIP Membership.
+  primary_user_goal: Log in, select language, and either subscribe or close the paywall to explore Home.
+  primary_business_goal: Complete onboarding and drive VIP conversion without blocking free exploration after paywall close.
+  design_principle:
+    - DP04 Simple Language, Readable Devanagari
+    - DP05 Pro as Added Devotional Value
+    - DP06 Clear Value Before Payment
+    - DP08 Lightweight, Readable, Small-Screen First
+
+access_model:
+  free_user:
+    can_view:
+      - Splash
+      - Phone Choice
+      - Phone Input
+      - OTP
+      - Name + Language
+      - VIP Paywall
+      - Home after paywall close
+    can_do:
+      - Complete mandatory phone OTP login
+      - Accept terms
+      - Enter name
+      - Choose language
+      - View paywall after onboarding
+      - Close paywall and go to Home
+      - See paywall again on every future app open while still free
+    paywall_triggers:
+      - After successful name and language save during first onboarding
+      - On every future app open after splash if logged in, onboarding complete, and subscription is not active
+      - Other module-specific Pro intent triggers are covered by their own packages
+    should_not_show:
+      - Pro badge unless subscription is active
+      - Payment success state unless payment is verified
+      - Any blocker that prevents Home after closing paywall
+  pro_user:
+    can_view:
+      - Splash
+      - Home after session and subscription check
+    can_do:
+      - Skip app-open paywall when subscription is active or restored
+      - Continue to Home after successful payment
+    paywall_triggers:
+      - None for app open when subscription is active
+    should_not_show:
+      - Repeated app-open paywall
+      - Pay Now CTA for an already active subscription in this onboarding paywall
+  confirmed_exception_to_app_defaults:
+    rule: Free users see paywall again on every app open.
+    reason: Designer confirmed this behavior for MVP.
+
+screen_structure:
+  sections:
+    - id: splash
+      name: Splash
+      source: Rendered snapshot inside node 520:4992
+      visible_elements:
+        - Warm background
+        - Prabhuji logo
+        - Prabhuji wordmark
+        - 100 percent secure trust text visible in snapshot
+      interactions:
+        - element: screen
+          action: app opens
+          result: Initialize session, subscription status, onboarding state, and config before routing.
+          confidence: confirmed
+        - element: routing
+          action: checks complete
+          result: Route to phone flow, incomplete onboarding step, paywall, or Home based on state.
+          confidence: confirmed
+      rules:
+        - Keep splash simple and fast.
+        - Do not show paywall until routing confirms logged-in free user or post-onboarding trigger.
+
+    - id: phone_choice
+      name: Phone Choice
+      source: Child frame inside node 520:4992
+      visible_elements:
+        - Prabhuji logo
+        - Login to Prabhuji title
+        - Continue with Phone Number button
+        - Terms checkbox
+        - Privacy Policy link
+        - Terms of Service link
+        - Social login icon placeholders in raw Figma structure
+      interactions:
+        - element: Continue with Phone Number
+          action: tap
+          result: Open Phone Input.
+          confidence: confirmed
+        - element: Terms checkbox
+          action: toggle
+          result: If unchecked, primary login action is disabled.
+          confidence: confirmed
+        - element: Privacy Policy link
+          action: tap
+          result: Open production privacy policy URL.
+          confidence: confirmed
+        - element: Terms of Service link
+          action: tap
+          result: Open production terms URL.
+          confidence: confirmed
+      rules:
+        - Phone login is mandatory for MVP.
+        - Terms checkbox is checked by default and required.
+        - Social login is not in Phase 1 unless product explicitly adds it.
+
+    - id: phone_input
+      name: Phone Input
+      source: Rendered snapshot inside node 520:4992
+      visible_elements:
+        - Prabhuji logo
+        - Login to Prabhuji title
+        - Phone Number input
+        - Number safety text
+        - Get OTP button
+        - Terms checkbox and links
+      interactions:
+        - element: Phone Number input
+          action: enter mobile number
+          result: Validate India-only +91 phone number.
+          confidence: confirmed
+        - element: Get OTP
+          action: tap
+          result: Request OTP if phone is valid and terms are accepted.
+          confidence: confirmed
+        - element: Get OTP
+          action: tap while invalid
+          result: Keep user on screen and show validation.
+          confidence: assumed
+      rules:
+        - India-only for Phase 1.
+        - No country picker in Phase 1.
+        - Do not send raw phone number to analytics.
+
+    - id: otp
+      name: OTP
+      source: Child frame inside node 520:4992
+      visible_elements:
+        - Login to Prabhuji title
+        - OTP sent to masked or formatted phone number
+        - Change No. link
+        - OTP digit inputs
+        - Submit button
+        - Resend OTP countdown
+        - Terms checkbox and links
+      interactions:
+        - element: Change No.
+          action: tap
+          result: Return to Phone Input with number editable.
+          confidence: confirmed
+        - element: OTP inputs
+          action: enter digits
+          result: Move focus across digit boxes and allow Submit when complete.
+          confidence: assumed
+        - element: Submit
+          action: tap
+          result: Verify OTP through engineering/auth provider logic.
+          confidence: confirmed
+        - element: Resend OTP countdown
+          action: wait until active
+          result: Resend OTP becomes tappable after timer.
+          confidence: partially_confirmed
+        - element: Resend OTP
+          action: tap when active
+          result: Request new OTP and restart timer.
+          confidence: confirmed
+      rules:
+        - Exact OTP length, resend timer, retry limits, and blocking rules are engineering-owned.
+        - Figma shows 4 digits and 20 second resend countdown as visual reference.
+        - Follow existing internal app behavior such as Dostii.
+        - Do not send OTP value to analytics.
+
+    - id: otp_wrong
+      name: OTP Wrong
+      source: Child frame inside node 520:4992
+      visible_elements:
+        - Red OTP input borders
+        - Invalid OTP message
+        - Submit button
+        - Resend OTP state
+      interactions:
+        - element: Submit
+          action: wrong OTP submitted
+          result: Show Invalid OTP state and keep user on OTP screen.
+          confidence: confirmed
+        - element: Resend OTP
+          action: tap after enabled
+          result: Request new OTP and clear invalid OTP state.
+          confidence: assumed
+      rules:
+        - Use simple error copy.
+        - Temporary lockout behavior follows engineering/auth provider rules.
+
+    - id: name_language
+      name: Name + Language
+      source: node 406:2953
+      visible_elements:
+        - Name input
+        - Choose your language title
+        - Hindi language card selected
+        - Marathi language card
+        - Gujarati language card
+        - Bengali language card
+        - Odia language card
+        - Tamil language card
+        - Telugu language card
+        - Kannada language card
+        - Continue button
+      interactions:
+        - element: Name input
+          action: enter name
+          result: Store name for profile when user continues.
+          confidence: confirmed
+        - element: Language card
+          action: tap
+          result: Select one language and update card state.
+          confidence: confirmed
+        - element: Continue
+          action: tap with valid name and language
+          result: Save profile preference and route to Paywall.
+          confidence: confirmed
+        - element: Continue
+          action: tap with missing name
+          result: Keep disabled or show validation.
+          confidence: confirmed
+      rules:
+        - Name is mandatory.
+        - Language is mandatory.
+        - Hindi is default.
+        - Selected language applies to UI and content preference.
+        - Fallback order is selected language, Hindi, English.
+
+    - id: paywall
+      name: Prabhuji VIP Membership Paywall
+      source: node 493:3349
+      visible_elements:
+        - Close icon
+        - Prabhuji VIP Membership title
+        - Header video area
+        - Plan tabs for Per Week, Per Month, Per Quarter
+        - Free trial card
+        - Price area
+        - Subscription detail copy
+        - VIP Benefits heading
+        - Benefits list
+        - Cancel Anytime text
+        - Refund Policy link
+        - Pay using selector
+        - Payment method display
+        - Shimmer Pay Now button
+      interactions:
+        - element: Close icon
+          action: tap
+          result: Close paywall and route to Home without confirmation.
+          confidence: confirmed
+        - element: Header video
+          action: paywall appears
+          result: Autoplay video with sound.
+          confidence: confirmed
+        - element: Header video
+          action: tap
+          result: Toggle play and pause.
+          confidence: confirmed
+        - element: Plan tab
+          action: tap
+          result: Select plan and update plan details.
+          confidence: confirmed
+        - element: Refund Policy
+          action: tap
+          result: Open production refund policy URL.
+          confidence: confirmed
+        - element: Payment method selector
+          action: tap
+          result: Open payment method selector only if payment provider supports it.
+          confidence: assumed
+        - element: Pay Now
+          action: tap
+          result: Start payment flow for selected valid plan.
+          confidence: confirmed
+      rules:
+        - Paywall appears after onboarding and on every future app open for free users.
+        - Active Pro users skip paywall.
+        - If no valid plans are available, route to Home.
+        - Paywall content, video, benefits, plan display, and localization are CMS or remote config controlled.
+        - Prices and chargeable products are validated by payment or billing backend.
+
+onboarding_flow_behavior:
+  login_required: true
+  guest_mode_phase_1: false
+  country_scope_phase_1: India only
+  fixed_country_code: '+91'
+  returning_user_routing:
+    logged_out: phone_choice_or_phone_input
+    logged_in_onboarding_incomplete: first_incomplete_onboarding_step
+    logged_in_free_onboarding_complete: paywall
+    logged_in_pro_onboarding_complete: home
+  onboarding_completion_definition:
+    - Phone OTP verified
+    - Terms accepted
+    - Name saved
+    - Language saved
+  paywall_after_onboarding: true
+  close_paywall_marks_session_ready_for_home: true
+  paywall_repeats_on_future_app_opens_for_free_user: true
+  confidence: confirmed
+
+otp_behavior:
+  exact_rules_owner: Engineering
+  current_decision: Follow existing internal app logic such as Dostii.
+  figma_visual_reference:
+    otp_digits_shown: 4
+    resend_countdown_shown_seconds: 20
+  configurable_rules_needed:
+    - otp_digit_count
+    - resend_timer_seconds
+    - max_wrong_attempts
+    - temporary_block_duration
+    - otp_expiry_duration
+  analytics_safety:
+    - Never log raw OTP.
+    - Never log raw phone number.
+  confidence: partially_confirmed
+
+language_behavior:
+  phase_1_languages:
+    - code: hi
+      native_label: हिंदी
+      english_label: Hindi
+      default: true
+    - code: mr
+      native_label: मराठी
+      english_label: Marathi
+    - code: gu
+      native_label: ગુજરાતી
+      english_label: Gujarati
+    - code: bn
+      native_label: বাংলা
+      english_label: Bengali
+    - code: or
+      native_label: ଓଡ଼ିଆ
+      english_label: Odia
+    - code: ta
+      native_label: தமிழ்
+      english_label: Tamil
+    - code: te
+      native_label: తెలుగు
+      english_label: Telugu
+    - code: kn
+      native_label: ಕನ್ನಡ
+      english_label: Kannada
+  default_language: hi
+  applies_to:
+    - app_ui_language
+    - content_language_preference
+    - paywall_localization
+  fallback_order:
+    - selected_language
+    - hi
+    - en
+  final_language_list_status: open_discussion_but_not_blocking_package
+  confidence: confirmed
+
+paywall_behavior:
+  trigger_rules:
+    post_onboarding: Show after name and language are saved.
+    free_user_app_open: Show on every app open after splash if user is free and onboarding is complete.
+    pro_user_app_open: Skip and route to Home.
+  close_behavior:
+    action: close_icon_tapped
+    result: Route to Home without confirmation.
+    mark_onboarding_complete: true
+  video_rules:
+    source: CMS or remote config
+    autoplay: true
+    muted_by_default: false
+    tap_behavior: Toggle play and pause.
+    background_behavior: Pause video when app goes to background.
+    fallback: Use cached video, fallback image, or show paywall without video.
+    localization: Video may be localized in Phase 1 if CMS provides localized video assets.
+  plan_rules:
+    plan_tabs:
+      - week
+      - month
+      - quarter
+    default_plan: Remote config default, fallback to week.
+    hardcoded_figma_prices_allowed: false
+    display_config_source: CMS or remote config
+    chargeable_price_source: payment or billing backend
+    no_valid_plans_behavior: Route to Home and log paywall_no_valid_plans.
+  benefit_rules:
+    source: CMS or remote config
+    localizable: true
+    visible_examples:
+      - Mandir
+      - Wallpaper
+      - Ringtone
+      - Aarti & Bhajans
+      - Mantras & Stutis
+      - Whatsapp Status
+      - Horoscope
+      - App icon
+  shimmer_button:
+    scope: Paywall Pay Now CTA only
+    height: 44
+    disabled_when:
+      - no_valid_selected_plan
+      - payment_starting
+      - offline
+  confidence: confirmed
+
+payment_behavior:
+  provider_status: open
+  current_decision: Razorpay or UPI custom flow, or engineering to decide.
+  provider_owner: Engineering / Product
+  required_states:
+    - success
+    - failure
+    - user_cancelled
+    - pending
+    - subscription_restored_or_active
+  state_results:
+    success: Mark user Pro and route to Home.
+    failure: Show simple toast or dialog and keep user on paywall.
+    user_cancelled: Keep user on paywall and allow close to Home.
+    pending: Show pending message and follow payment verification rules.
+    restored_or_active: Skip paywall and route to Home.
+  sensitive_data_rules:
+    - Do not log raw payment instrument details.
+    - Do not log UPI ID unless security and compliance approve it.
+    - Use internal order_id and safe transaction_id only where allowed.
+  confidence: partially_confirmed
+
+localization_rules:
+  paywall_localization_phase_1: true
+  fields_to_localize:
+    - paywall_title
+    - plan_labels
+    - trial_label
+    - subscription_detail_text
+    - vip_benefits_heading
+    - benefit_names
+    - cancel_anytime_text
+    - refund_policy_text
+    - pay_now_cta
+    - payment_result_messages
+    - config_error_messages
+  fallback_order:
+    - selected_language
+    - hi
+    - en
+  log_fallback_event: paywall_localization_fallback_used
+  confidence: confirmed
+
+analytics_rules:
+  do_not_track:
+    - raw_phone_number
+    - otp_value
+    - raw_user_name
+    - sensitive_payment_details
+  recommended_common_attributes:
+    - user_id
+    - anonymous_id
+    - session_id
+    - app_version
+    - build_number
+    - platform
+    - device_locale
+    - selected_language
+    - subscription_status
+    - network_status
+    - entry_point
+    - config_version
+    - experiment_variant
+  important_special_attribute:
+    name: paywall_impression_count_for_user
+    reason: Free users see paywall on every app open, so product needs fatigue and conversion tracking.
+
+data_requirements:
+  cms:
+    language_options:
+      fields:
+        - language_code
+        - native_label
+        - english_label
+        - enabled
+        - sort_order
+        - fallback_language_code
+    paywall_config:
+      fields:
+        - paywall_id
+        - config_version
+        - enabled
+        - locale
+        - fallback_locale
+        - title
+        - video_url
+        - video_thumbnail_url
+        - video_id
+        - plan_order
+        - default_plan_id
+        - benefits
+        - legal_links
+        - shimmer_enabled
+        - last_updated_at
+    paywall_plan_display:
+      fields:
+        - plan_id
+        - product_id
+        - period
+        - localized_label
+        - trial_label
+        - trial_days
+        - display_price_text
+        - subscription_detail_text
+        - enabled
+        - sort_order
+    paywall_benefit:
+      fields:
+        - benefit_id
+        - localized_name
+        - icon
+        - enabled
+        - sort_order
+    legal_links:
+      fields:
+        - privacy_policy_url
+        - terms_service_url
+        - refund_policy_url
+  backend:
+    user_profile:
+      fields:
+        - user_id
+        - phone_country_code
+        - phone_number_hash_or_token
+        - name
+        - selected_language
+        - onboarding_completed
+        - created_at
+        - updated_at
+    auth:
+      fields:
+        - otp_session_id
+        - resend_available_after_seconds
+        - attempt_count
+        - provider_error_code
+    subscription:
+      fields:
+        - subscription_status
+        - active_plan_id
+        - active_product_id
+        - expires_at
+        - provider
+        - restore_status
+    payment:
+      fields:
+        - order_id
+        - selected_plan_id
+        - product_id
+        - amount
+        - currency
+        - payment_provider
+        - payment_status
+        - safe_error_code
+
+states:
+  splash_loading:
+    description: Splash is visible while app checks session, onboarding, subscription, and config.
+  config_loading:
+    description: Paywall config is being fetched or loaded from cache.
+  config_failed_cache_available:
+    description: Remote config failed but cached config is available.
+  config_failed_no_cache:
+    description: Remote config failed and no cache is available; route to Home if no valid plans.
+  phone_invalid:
+    description: Phone number is invalid for +91 India-only format.
+  otp_request_loading:
+    description: OTP request is in progress.
+  otp_request_failed:
+    description: OTP request failed due to network, provider, or validation issue.
+  otp_invalid:
+    description: User submitted wrong OTP and sees Invalid OTP state.
+  otp_rate_limited:
+    description: User hit auth provider retry or resend limit.
+  profile_save_loading:
+    description: Name and language are being saved.
+  profile_save_failed:
+    description: Profile save failed and user can retry.
+  paywall_video_loading:
+    description: Paywall video is loading before or during autoplay.
+  paywall_video_failed:
+    description: Video failed and fallback image or no-video layout is used.
+  paywall_no_valid_plans:
+    description: No valid plan exists; app routes user to Home.
+  payment_starting:
+    description: Pay Now was tapped and payment flow is starting.
+  payment_success:
+    description: Payment verified, user becomes Pro, and routes to Home.
+  payment_failed:
+    description: Payment failed, user remains on paywall and can retry or close.
+  payment_cancelled:
+    description: User cancelled payment, remains on paywall and can close to Home.
+  payment_pending:
+    description: Payment is pending verification and app shows clear pending status.
+  offline:
+    description: Network is unavailable; login/payment actions cannot proceed.
+
+analytics_events:
+  - event_name: onboarding_app_opened
+    trigger: App is opened.
+    required: true
+    attributes: [entry_point, login_state, subscription_status, has_completed_onboarding]
+  - event_name: onboarding_splash_viewed
+    trigger: Splash screen is shown.
+    required: true
+    attributes: [splash_duration_ms, config_fetch_started, session_check_started]
+  - event_name: onboarding_route_decided
+    trigger: Splash/session check decides next destination.
+    required: true
+    attributes: [route_to, reason, subscription_status, has_completed_onboarding]
+  - event_name: onboarding_phone_choice_viewed
+    trigger: Phone choice screen is shown.
+    required: true
+    attributes: [available_login_methods, terms_checked_default]
+  - event_name: onboarding_phone_continue_tapped
+    trigger: User taps Continue with Phone Number.
+    required: true
+    attributes: [terms_accepted]
+  - event_name: onboarding_phone_input_viewed
+    trigger: Phone input screen is shown.
+    required: true
+    attributes: [country_code_default, country_picker_available]
+  - event_name: onboarding_terms_toggled
+    trigger: User checks or unchecks terms checkbox.
+    required: false
+    attributes: [checked, screen_name]
+  - event_name: legal_link_tapped
+    trigger: User taps Privacy Policy, Terms of Service, or Refund Policy.
+    required: true
+    attributes: [source_screen, link_type, url_available, locale_served]
+  - event_name: onboarding_get_otp_tapped
+    trigger: User taps Get OTP.
+    required: true
+    attributes: [country_code, phone_number_length, terms_accepted, is_phone_valid_client_side]
+  - event_name: onboarding_otp_request_result
+    trigger: OTP request succeeds or fails.
+    required: true
+    attributes: [result, provider, error_code, error_message_key, latency_ms, resend_available_after_seconds]
+  - event_name: onboarding_otp_screen_viewed
+    trigger: OTP screen is shown.
+    required: true
+    attributes: [country_code, phone_number_length, otp_length_configured, resend_timer_seconds]
+  - event_name: onboarding_change_number_tapped
+    trigger: User taps Change No.
+    required: true
+    attributes: [otp_attempt_count, resend_count]
+  - event_name: onboarding_otp_submitted
+    trigger: User taps Submit on OTP screen.
+    required: true
+    attributes: [otp_digit_count_entered, attempt_count, resend_count, terms_accepted]
+  - event_name: onboarding_otp_verified
+    trigger: OTP verification succeeds.
+    required: true
+    attributes: [attempt_count, resend_count, latency_ms, is_new_user]
+  - event_name: onboarding_otp_failed
+    trigger: OTP verification fails.
+    required: true
+    attributes: [attempt_count, resend_count, error_code, error_message_key, temporary_block_applied]
+  - event_name: onboarding_resend_otp_tapped
+    trigger: User taps active Resend OTP.
+    required: true
+    attributes: [resend_count, seconds_since_last_otp]
+  - event_name: onboarding_resend_otp_result
+    trigger: Resend OTP succeeds or fails.
+    required: true
+    attributes: [result, resend_count, error_code, latency_ms, next_resend_available_after_seconds]
+  - event_name: onboarding_language_screen_viewed
+    trigger: Name + language screen is shown.
+    required: true
+    attributes: [default_language, available_languages, preselected_language, name_prefilled]
+  - event_name: onboarding_language_selected
+    trigger: User selects a language card.
+    required: true
+    attributes: [selected_language, previous_language, was_default_selection]
+  - event_name: onboarding_name_field_completed
+    trigger: User exits name field with valid non-empty value.
+    required: false
+    attributes: [name_length_bucket]
+  - event_name: onboarding_language_continue_tapped
+    trigger: User taps Continue on name + language screen.
+    required: true
+    attributes: [selected_language, name_present, name_length_bucket, is_form_valid]
+  - event_name: onboarding_profile_saved
+    trigger: Name and language save succeeds or fails.
+    required: true
+    attributes: [result, selected_language, error_code, latency_ms]
+  - event_name: onboarding_completed
+    trigger: Required onboarding fields are saved.
+    required: true
+    attributes: [selected_language, login_method, time_to_complete_seconds]
+  - event_name: paywall_config_loaded
+    trigger: Paywall config loads from remote, cache, or fallback.
+    required: true
+    attributes: [source, config_version, locale_requested, locale_served, fallback_used, fallback_from, has_valid_video, valid_plan_count, benefit_count]
+  - event_name: paywall_config_failed
+    trigger: Paywall config fails to load.
+    required: true
+    attributes: [error_code, error_message_key, cache_available, fallback_available, route_after_failure]
+  - event_name: paywall_no_valid_plans
+    trigger: No valid plans are available.
+    required: true
+    attributes: [config_version, locale_requested, locale_served, route_after_failure, reason]
+  - event_name: paywall_localization_fallback_used
+    trigger: Selected language paywall copy or video is unavailable and fallback is used.
+    required: true
+    attributes: [selected_language, requested_locale, served_locale, fallback_level, missing_fields]
+  - event_name: paywall_viewed
+    trigger: Paywall screen is shown.
+    required: true
+    attributes: [trigger, paywall_id, config_version, locale_served, subscription_status, selected_plan_id, selected_plan_period, selected_product_id, display_price, currency, trial_available, trial_days, benefit_count, video_id, paywall_impression_count_for_user]
+  - event_name: paywall_closed
+    trigger: User taps paywall close icon.
+    required: true
+    attributes: [trigger, time_on_paywall_seconds, selected_plan_id, selected_plan_period, video_played, video_watch_seconds, route_after_close, paywall_impression_count_for_user]
+  - event_name: paywall_video_autoplay_started
+    trigger: Paywall video starts automatically.
+    required: true
+    attributes: [video_id, video_locale, autoplay, muted, source]
+  - event_name: paywall_video_tapped
+    trigger: User taps video area.
+    required: true
+    attributes: [video_id, action_result, playback_position_seconds, muted]
+  - event_name: paywall_video_paused
+    trigger: Video pauses.
+    required: false
+    attributes: [video_id, reason, playback_position_seconds]
+  - event_name: paywall_video_completed
+    trigger: Video reaches end.
+    required: false
+    attributes: [video_id, duration_seconds, watch_seconds, completion_percent]
+  - event_name: paywall_video_failed
+    trigger: Video fails to load or play.
+    required: true
+    attributes: [video_id, video_locale, error_code, fallback_image_shown, source]
+  - event_name: paywall_plan_selected
+    trigger: User selects Per Week, Per Month, or Per Quarter.
+    required: true
+    attributes: [previous_plan_id, selected_plan_id, selected_plan_period, selected_product_id, display_price, currency, trial_available, trial_days]
+  - event_name: paywall_benefits_viewed
+    trigger: Benefits card is visible.
+    required: false
+    attributes: [benefit_count, benefits, locale_served]
+  - event_name: paywall_pay_now_tapped
+    trigger: User taps shimmer Pay Now button.
+    required: true
+    attributes: [selected_plan_id, selected_plan_period, selected_product_id, display_price, currency, trial_available, trial_days, payment_provider, payment_method_displayed]
+  - event_name: paywall_payment_method_tapped
+    trigger: User taps payment method selector.
+    required: false
+    attributes: [current_payment_method, payment_provider]
+  - event_name: paywall_payment_started
+    trigger: Payment flow begins.
+    required: true
+    attributes: [payment_provider, order_id, selected_plan_id, selected_plan_period, selected_product_id, amount, currency, trial_applied]
+  - event_name: paywall_payment_success
+    trigger: Payment completes successfully.
+    required: true
+    attributes: [payment_provider, order_id, transaction_id, selected_plan_id, selected_plan_period, selected_product_id, amount, currency, subscription_status_after, route_after_success, latency_ms]
+  - event_name: paywall_payment_failed
+    trigger: Payment fails.
+    required: true
+    attributes: [payment_provider, order_id, selected_plan_id, selected_plan_period, amount, currency, failure_reason, error_code, retry_available]
+  - event_name: paywall_payment_cancelled
+    trigger: User cancels payment flow.
+    required: true
+    attributes: [payment_provider, order_id, selected_plan_id, selected_plan_period, cancel_source]
+  - event_name: paywall_payment_pending
+    trigger: Payment enters pending state.
+    required: true
+    attributes: [payment_provider, order_id, selected_plan_id, selected_plan_period, pending_reason, expected_resolution]
+  - event_name: paywall_subscription_status_checked
+    trigger: App checks whether user is already Pro.
+    required: true
+    attributes: [check_trigger, result, provider, latency_ms]
+  - event_name: paywall_subscription_restored
+    trigger: Existing active subscription is detected or restored.
+    required: true
+    attributes: [check_trigger, subscription_status_after, route_after_restore, provider]
+
+qa_checks:
+  - Login is mandatory for first-time users in Phase 1.
+  - The app does not allow guest access before phone OTP login in Phase 1.
+  - Phone input uses fixed +91 India-only behavior.
+  - Terms checkbox is checked by default.
+  - Primary login or OTP request action is disabled when terms are unchecked.
+  - Privacy Policy and Terms of Service links open valid production URLs before release.
+  - OTP value is never sent to analytics.
+  - Raw phone number is never sent to analytics.
+  - Change No. returns the user to editable phone input.
+  - Wrong OTP shows Invalid OTP state.
+  - Resend OTP follows engineering/auth provider timer and retry logic.
+  - Name is required before continuing from language screen.
+  - A language is required before continuing from language screen.
+  - Hindi is selected by default on the language screen.
+  - Selected language is saved to the user profile.
+  - Selected language is used for both UI and content preference where supported.
+  - Paywall appears after successful name and language save.
+  - Free users see the paywall on every future app open.
+  - Active Pro users skip the app-open paywall.
+  - Paywall close icon routes directly to Home without confirmation.
+  - If no valid paywall plans are available, the app routes to Home instead of blocking onboarding.
+  - Paywall video source can be changed without an app update.
+  - Paywall video autoplays with sound by default.
+  - Tapping the paywall video toggles play and pause.
+  - Paywall copy is localized based on selected language in Phase 1.
+  - Paywall localization falls back to Hindi and then English when selected language content is missing.
+  - Paywall prices are not hardcoded from Figma.
+  - Plan display and plan ordering can change without an app update.
+  - Actual chargeable plan validity is checked with payment or billing backend.
+  - Shimmer button is used only for the paywall Pay Now CTA.
+  - Pay Now is disabled while payment is starting.
+  - Payment success marks the user Pro and routes to Home.
+  - Payment failure keeps the user on paywall and allows retry.
+  - Payment cancellation keeps the user on paywall and allows close to Home.
+  - Payment pending shows a clear pending state.
+  - Paywall impression count is tracked for repeated app-open paywalls.
+
+handoff_readiness:
+  ready_for_dev_discussion: true
+  ready_for_final_build: false
+  remaining_questions_file: open-questions.yaml
+  reason_not_final_build_ready:
+    - Payment provider and compliance path are not final.
+    - OTP exact provider rules are engineering-owned and must be confirmed in implementation.
+    - Legal URLs are required before release.

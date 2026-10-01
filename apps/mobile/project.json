@@ -1,0 +1,39 @@
+{
+  "name": "mobile",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/mobile/lib",
+  "tags": [],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "cwd": "apps/mobile", "command": "flutter test" }
+    },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/mobile",
+        "command": "flutter test integration_test/app_test.dart --dart-define=API_URL=${E2E_MOBILE_API_URL:-http://10.0.2.2:3000} ${E2E_DEVICE:+-d $E2E_DEVICE}"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "cwd": "apps/mobile", "command": "flutter analyze" }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": { "cwd": "apps/mobile", "command": "flutter build apk --debug" }
+    },
+    "generate": {
+      "executor": "nx:run-commands",
+      "options": { "command": "bash tools/generate-mobile-models.sh" }
+    },
+    "maestro": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/mobile",
+        "command": "maestro test maestro/ --include-tags=onboarding"
+      }
+    }
+  }
+}

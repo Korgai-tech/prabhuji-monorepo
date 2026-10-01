@@ -1,0 +1,57 @@
+open_questions:
+  - id: "q1"
+    question: "Is the five-item bottom nav Home / Chat / Status / Downloads / RashiFal the final IA? Adding Downloads (and Chat) drops Mandir and Books from the previously documented nav."
+    owner: "Product (Ronak)"
+    priority: "high"
+    current_decision: "Confirmed as of now (per designer), but treated as provisional — it's an app-wide IA change beyond this module."
+    recommendation: "Lock the final five with Ronak before build; if it changes, Downloads still reaches via Profile + play page."
+    blocker: false
+
+  - id: "q2"
+    question: "After the app is reinstalled (or storage cleared), what happens to a premium user's downloads?"
+    owner: "Engineering / Product"
+    priority: "medium"
+    current_decision: "App-private encrypted storage is cleared on uninstall, so downloads must be re-fetched after reinstall."
+    recommendation: "Confirm re-download-on-reinstall and whether a 'restore downloads' affordance is wanted (Phase 2)."
+    blocker: false
+
+  - id: "q3"
+    question: "On premium lapse, do downloaded items stay in their filters/counts and simply gate at play time, or are they visually marked as locked?"
+    owner: "Design / Product"
+    priority: "medium"
+    current_decision: "Items remain visible and counted; tapping to play re-fires the unified paywall. No explicit lock badge specified."
+    recommendation: "Confirm whether a subtle 'locked' affordance is wanted, or keep them visually normal until play tap."
+    blocker: false
+
+  - id: "q4"
+    question: "The Profile 'My Downloads' row is in the PRD but not in this Figma frame. Is it Phase 1, and what's its placement/label?"
+    owner: "Design"
+    priority: "low"
+    current_decision: "Assumed Phase 1; opens the same Downloads screen."
+    recommendation: "Add the row to Figma or confirm it's deferred."
+    blocker: false
+
+  - id: "q5"
+    question: "Should the 'downloads play only inside Prabhuji' disclosure persist on the populated Downloads list, or only on the empty state (where it currently sits)?"
+    owner: "Design / Product"
+    priority: "low"
+    current_decision: "Present on the empty state today."
+    recommendation: "Persist a quiet one-line version on the populated list too, for the users who never see the empty state."
+    blocker: false
+
+  - id: "q6"
+    question: "Does the play page show an 'Available offline' chip under the title (PRD §7), or is the Downloaded button state sufficient?"
+    owner: "Design"
+    priority: "low"
+    current_decision: "Figma shows the Download Button 'Downloaded' state; no separate chip observed."
+    recommendation: "Confirm whether the chip is wanted in addition to the button state."
+    blocker: false
+
+phase_2_items:
+  - "Storage-management UI (usage view, bulk clear)."
+  - "Wi-Fi-only download setting / network policy controls."
+  - "Download quality options."
+  - "Downloads for other content types (e.g. Books audio)."
+  - "Sort / search within Downloads; richer filter taxonomy."
+  - "Smart auto-download of daily/favourite content."
+  - "Restore-downloads affordance after reinstall."

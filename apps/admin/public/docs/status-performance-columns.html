@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Column-by-column reference for the Prabhuji CMS Status Performance report: what each value means, which system it comes from, and the five things that look like bugs but aren't.">
+<link rel="icon" href="../favicon.ico">
+<title>Status Performance Columns · Prabhuji CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    /* Cool ink neutrals, biased slightly toward the indigo used for CMS provenance. */
+    --ground:        #f5f6f9;
+    --surface:       #ffffff;
+    --surface-sunk:  #eef0f5;
+    --ink:           #171a21;
+    --ink-soft:      #4a5161;
+    --ink-faint:     #767e91;
+    --rule:          #dfe3ec;
+    --rule-strong:   #c6ccda;
+
+    /* Provenance — the page's one structural idea. Three sources, three hues. */
+    --src-cms:       #4256c7;
+    --src-cms-bg:    #eaedfb;
+    --src-wh:        #0d7a6f;
+    --src-wh-bg:     #e2f3f0;
+    --src-calc:      #8a3f9c;
+    --src-calc-bg:   #f5e9f8;
+
+    --caution:       #a35c07;
+    --caution-bg:    #fdf2e0;
+    --caution-rule:  #edc27e;
+
+    --measure: 68ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:       #11131a;
+      --surface:      #171a23;
+      --surface-sunk: #1e2230;
+      --ink:          #e9ebf2;
+      --ink-soft:     #a8afc2;
+      --ink-faint:    #798098;
+      --rule:         #2a2f3d;
+      --rule-strong:  #3a4154;
+
+      --src-cms:      #97a4f5;
+      --src-cms-bg:   #1e2442;
+      --src-wh:       #5cc9b8;
+      --src-wh-bg:    #12312e;
+      --src-calc:     #d79ae6;
+      --src-calc-bg:  #2e1d35;
+
+      --caution:      #f0b866;
+      --caution-bg:   #33270f;
+      --caution-rule: #6b5120;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:       #11131a;
+    --surface:      #171a23;
+    --surface-sunk: #1e2230;
+    --ink:          #e9ebf2;
+    --ink-soft:     #a8afc2;
+    --ink-faint:    #798098;
+    --rule:         #2a2f3d;
+    --rule-strong:  #3a4154;
+
+    --src-cms:      #97a4f5;
+    --src-cms-bg:   #1e2442;
+    --src-wh:       #5cc9b8;
+    --src-wh-bg:    #12312e;
+    --src-calc:     #d79ae6;
+    --src-calc-bg:  #2e1d35;
+
+    --caution:      #f0b866;
+    --caution-bg:   #33270f;
+    --caution-rule: #6b5120;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: 'Public Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 56px 28px 96px;
+  }
+
+  /* ---- masthead ---- */
+  .masthead { border-bottom: 2px solid var(--rule-strong); padding-bottom: 28px; }
+
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
+    font-weight: 500;
+    font-size: clamp(34px, 5vw, 50px);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 20px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    max-width: var(--measure);
+    margin: 0;
+  }
+  .standfirst em { font-style: italic; }
+
+  /* ---- provenance legend ---- */
+  .legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin: 36px 0 0;
+  }
+  .legend-item { background: var(--surface); padding: 18px 20px; }
+  .legend-item p { margin: 8px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .chip::before {
+    content: '';
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .chip-cms  { color: var(--src-cms);  background: var(--src-cms-bg); }
+  .chip-wh   { color: var(--src-wh);   background: var(--src-wh-bg); }
+  .chip-calc { color: var(--src-calc); background: var(--src-calc-bg); }
+
+  /* ---- section headings ---- */
+  section { margin-top: 64px; }
+
+  h2 {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500;
+    font-size: 32px;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+  .tab-note {
+    font-size: 14px;
+    color: var(--ink-faint);
+    margin: 0 0 26px;
+  }
+
+  /* ---- column rows ---- */
+  .cols {
+    border-top: 1px solid var(--rule-strong);
+  }
+
+  .col {
+    display: grid;
+    grid-template-columns: minmax(150px, 1.1fr) minmax(0, 2fr) minmax(0, 1.5fr);
+    gap: 22px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--rule);
+    align-items: start;
+  }
+  @media (max-width: 760px) {
+    .col { grid-template-columns: 1fr; gap: 8px; padding: 20px 0; }
+  }
+
+  .col-name {
+    font-weight: 600;
+    font-size: 15.5px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    align-items: flex-start;
+  }
+
+  .col-value {
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    margin: 0;
+  }
+  .col-value strong { color: var(--ink); font-weight: 600; }
+
+  .col-src {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 0.86em;
+    background: var(--surface-sunk);
+    padding: 1.5px 5px;
+    border-radius: 3px;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  .src-label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 4px;
+  }
+  @media (max-width: 760px) { .src-label { margin-top: 6px; } }
+
+  /* ---- caveats: a different kind of thing, so a different form ---- */
+  .caveats { margin-top: 72px; }
+
+  .caveat {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--caution-rule);
+    padding: 20px 24px;
+    margin-bottom: 14px;
+  }
+  .caveat h3 {
+    font-size: 16.5px;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .caveat p {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: var(--measure);
+  }
+  .caveat p + p { margin-top: 10px; }
+
+  .verdict {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--caution);
+    background: var(--caution-bg);
+    padding: 3px 8px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+  }
+
+  /* ---- worked example ---- */
+  .example {
+    margin-top: 40px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 24px 26px;
+  }
+  .example h3 {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500;
+    font-size: 22px;
+    margin: 0 0 4px;
+  }
+  .example > p { font-size: 14px; color: var(--ink-faint); margin: 0 0 20px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  .scroll-x { overflow-x: auto; }
+  th, td { text-align: left; padding: 9px 14px 9px 0; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  td { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+  td:first-child { color: var(--ink); font-weight: 500; }
+  tr:last-child td { border-bottom: none; }
+
+  footer {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    font-size: 13.5px;
+    color: var(--ink-faint);
+    max-width: var(--measure);
+  }
+  footer code { font-size: 12.5px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Prabhuji CMS · Status → Performance</p>
+    <h1>What every column on this report means</h1>
+    <p class="standfirst">
+      Three systems feed this page, and most confusion comes from mistaking one for another.
+      The catalogue comes from the CMS database. The engagement numbers come from the analytics
+      warehouse. Everything that is a rate, a share or a day-count is <em>worked out</em> from
+      those two — and can be blank when there is nothing to divide by.
+    </p>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span class="chip chip-cms">CMS database</span>
+        <p>What an editor authored or configured: titles, deities, pins, active state. Always present, never estimated.</p>
+      </div>
+      <div class="legend-item">
+        <span class="chip chip-wh">Analytics warehouse</span>
+        <p>What devotees actually did, inside the selected date range. Absent or approximate when events are missing.</p>
+      </div>
+      <div class="legend-item">
+        <span class="chip chip-calc">Worked out</span>
+        <p>Derived on the fly from the other two. Blank means the divisor was zero — not that the value is zero.</p>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <h2>Tab 1 — By item</h2>
+    <p class="tab-note">One row per status item. Default view: sorted by share rate, highest first, hiding items under 100 views.</p>
+
+    <div class="cols">
+
+      <div class="col">
+        <div class="col-name">Thumbnail<span class="chip chip-cms">CMS</span></div>
+        <p class="col-value">The card art devotees see in the feed.</p>
+        <p class="col-src"><span class="src-label">Source</span><code>status_items.thumbnail_url</code></p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Title &amp; Slug<span class="chip chip-cms">CMS</span></div>
+        <p class="col-value">As authored. The slug is the stable identifier — it never changes once published, so it is safe to quote in a spreadsheet.</p>
+        <p class="col-src"><span class="src-label">Source</span><code>status_items.title</code>, <code>.slug</code></p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Deity<span class="chip chip-cms">CMS</span></div>
+        <p class="col-value">The English display name of the mapped deity. Deliberately taken from the CMS mapping, <strong>never</strong> from the analytics events — only a third of share events carry a deity at all.</p>
+        <p class="col-src"><span class="src-label">Source</span><code>status_items.deity_slug</code> → the deity module's English translation, falling back to the raw slug if no translation exists</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Type<span class="chip chip-cms">CMS</span></div>
+        <p class="col-value">Image or video.</p>
+        <p class="col-src"><span class="src-label">Source</span><code>status_items.media_type</code></p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Active<span class="chip chip-cms">CMS</span></div>
+        <p class="col-value">Whether the item is currently served. Inactive items still show their past numbers — that history is why they are here.</p>
+        <p class="col-src"><span class="src-label">Source</span><code>status_items.is_active</code></p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Created<span class="chip chip-cms">CMS</span></div>
+        <p class="col-value">When the item was added, shown as an IST date.</p>
+        <p class="col-src"><span class="src-label">Source</span><code>status_items.created_at</code>, converted from UTC to IST</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Days live<span class="chip chip-calc">Worked out</span></div>
+        <p class="col-value">Whole IST days since it was created. <strong>Never affected by the date filter</strong> — it always counts from creation to today, so a 7-day window does not cap it at 7.</p>
+        <p class="col-src"><span class="src-label">Derivation</span>today (IST) − created date (IST)</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Status pin<span class="chip chip-cms">CMS</span></div>
+        <p class="col-value">The position someone deliberately pinned this to in the Status feed. <strong>Blank for most items</strong> — pinning is the exception, not the rule. Only counts while the pin is live: not deleted, and inside its start/end window.</p>
+        <p class="col-src"><span class="src-label">Source</span><code>pinned_content.pin_position</code> for the all-gods surface, falling back to the per-deity surface</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Home pin<span class="chip chip-cms">CMS</span></div>
+        <p class="col-value">Same idea, for the home feed. Also usually blank.</p>
+        <p class="col-src"><span class="src-label">Source</span><code>pinned_content</code> on the home surface, matched through the item's home-feed card</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Avg. position<span class="chip chip-wh">Warehouse</span></div>
+        <p class="col-value">Where this item was actually <strong>seen</strong>, averaged across every view in the window. <strong>1.0 means top of feed.</strong> This is an outcome, not a setting — you cannot change it directly, and it moves as the catalogue rotates.</p>
+        <p class="col-src"><span class="src-label">Source</span>average <code>position_index</code> on <code>status_viewed</code>, shifted to be 1-based for reading</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">On home since<span class="chip chip-cms">CMS</span></div>
+        <p class="col-value">When this item's home-feed card was created. <strong>Blank does not mean "not on the homepage"</strong> — older items that have never been re-edited simply have no card record.</p>
+        <p class="col-src"><span class="src-label">Source</span><code>home_feed_items.created_at</code></p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Views<span class="chip chip-wh">Warehouse</span></div>
+        <p class="col-value">How many times the item was viewed in the window. Counts views in the Status tab only — see the caveats below.</p>
+        <p class="col-src"><span class="src-label">Source</span><code>status_viewed</code> events</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Viewers<span class="chip chip-wh">Warehouse</span></div>
+        <p class="col-value">Roughly how many <strong>different people</strong> saw it. Approximate by design — about half a percent out — because exact counting at this scale is far more expensive and never changes a decision.</p>
+        <p class="col-src"><span class="src-label">Source</span>approximate distinct count of users on <code>status_viewed</code></p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Share intents<span class="chip chip-wh">Warehouse</span></div>
+        <p class="col-value">How many times someone tapped Share — before choosing where to send it. <strong>Only recorded from 12 September 2026.</strong> Earlier ranges show blank.</p>
+        <p class="col-src"><span class="src-label">Source</span><code>status_share_cta_clicked</code> events</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Shares<span class="chip chip-wh">Warehouse</span></div>
+        <p class="col-value">Shares that actually completed. Failed attempts are excluded.</p>
+        <p class="col-src"><span class="src-label">Source</span><code>status_share_result</code> events with a successful result</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Share rate<span class="chip chip-calc">Worked out</span></div>
+        <p class="col-value">Shares ÷ Views. The headline number and the default sort — the closest thing here to "was this worth making". <strong>Blank when nobody saw it</strong>, which is different from nobody sharing it.</p>
+        <p class="col-src"><span class="src-label">Derivation</span>Shares ÷ Views</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Completion<span class="chip chip-calc">Worked out</span></div>
+        <p class="col-value">Of the people who tapped Share, how many finished. Counts only shares from 12 September onward, so it lines up with the intents it is divided by.</p>
+        <p class="col-src"><span class="src-label">Derivation</span>Shares since 12 Sep ÷ Share intents</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Tab 2 — By deity</h2>
+    <p class="tab-note">The same numbers rolled up per deity. Click any deity to open Tab 1 filtered to its items, keeping your date range.</p>
+
+    <div class="cols">
+
+      <div class="col">
+        <div class="col-name">Deity<span class="chip chip-cms">CMS</span></div>
+        <p class="col-value">English display name. Items with no deity mapped are grouped into a single <strong>(no deity)</strong> row rather than dropped — they are real content and usually worth a look.</p>
+        <p class="col-src"><span class="src-label">Source</span>the deity taxonomy and its English translation</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Items / Active<span class="chip chip-cms">CMS</span></div>
+        <p class="col-value">How many status items are mapped to this deity, and how many are currently live.</p>
+        <p class="col-src"><span class="src-label">Source</span>count of <code>status_items</code> grouped by deity</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">In feed<span class="chip chip-cms">CMS</span></div>
+        <p class="col-value">Always equals Active. Every active status item <em>is</em> in the feed — there is no separate list to be on. The column exists so you do not have to remember that.</p>
+        <p class="col-src"><span class="src-label">Source</span>same as Active, by construction</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Views · Share intents · Shares<span class="chip chip-wh">Warehouse</span></div>
+        <p class="col-value">Totals across all of that deity's items, over the selected window.</p>
+        <p class="col-src"><span class="src-label">Source</span>the same three events, grouped by deity rather than by item</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Viewers<span class="chip chip-wh">Warehouse</span></div>
+        <p class="col-value">How many different people saw <strong>anything</strong> by this deity. Someone who viewed three Hanuman statuses counts once here — so this will not match the sum of the per-item viewers on Tab 1.</p>
+        <p class="col-src"><span class="src-label">Source</span>approximate distinct users across the deity's whole catalogue</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Share rate · Completion<span class="chip chip-calc">Worked out</span></div>
+        <p class="col-value">Same formulas as Tab 1, applied to the deity's totals.</p>
+        <p class="col-src"><span class="src-label">Derivation</span>Shares ÷ Views · Shares since 12 Sep ÷ Share intents</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Views / item · Shares / item<span class="chip chip-calc">Worked out</span></div>
+        <p class="col-value">Average pull per live item — the fairest way to compare a deity with 23 statuses against one with 2. Note the divisor is <strong>active</strong> items while the totals include retired ones, so a deity that recently retired a lot of content reads high.</p>
+        <p class="col-src"><span class="src-label">Derivation</span>Views ÷ Active items · Shares ÷ Active items</p>
+      </div>
+
+      <div class="col">
+        <div class="col-name">Best item<span class="chip chip-calc">Worked out</span></div>
+        <p class="col-value">This deity's highest share rate among items with more than 100 views. <strong>"Not enough data" is the normal answer</strong> for most deities — without the view floor, "best" would be whatever got one view and one share.</p>
+        <p class="col-src"><span class="src-label">Derivation</span>highest share rate above the 100-view floor; ties go to the item with more views</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="caveats">
+    <h2>Five things that look like bugs but are not</h2>
+    <p class="tab-note">Each of these has caught someone already. None of them is a fault in the report.</p>
+
+    <div class="caveat">
+      <span class="verdict">Expected</span>
+      <h3>The two tabs do not add up</h3>
+      <p>Tab 2's Viewers is not the sum of Tab 1's Viewers, and never will be. One devotee who viewed three of a deity's statuses is <strong>one</strong> viewer at the deity level and three separate rows at the item level. Adding the item rows would count that person three times.</p>
+    </div>
+
+    <div class="caveat">
+      <span class="verdict">Expected</span>
+      <h3>Completion can go over 100%</h3>
+      <p>Completion is "shares per recorded intent", not a true funnel. A devotee who retries a failed share fires a second result, and a share that started on the home feed need not pass through the Status tab's Share button at all. So the top and bottom of the fraction count slightly different populations, and the ratio can exceed 1.</p>
+      <p>A number well above 100% is worth a look, but it is data, not a defect.</p>
+    </div>
+
+    <div class="caveat">
+      <span class="verdict">By design</span>
+      <h3>Share intents and Completion are blank before 12 September 2026</h3>
+      <p>The app did not record that event until then. Blank means <strong>not recorded</strong>, not zero — a zero would say devotees never tried to share, which is a different and untrue claim.</p>
+    </div>
+
+    <div class="caveat">
+      <span class="verdict">Known gap</span>
+      <h3>Home-feed views are missing, but home-feed shares are not</h3>
+      <p>Views are only recorded inside the Status tab, while shares are recorded from both the Status tab and the home feed. Any item getting significant home-feed traffic therefore shows an <strong>inflated share rate</strong>, and an item can legitimately show zero views alongside real shares.</p>
+      <p>Closing this needs a change in the mobile app. Until then, treat share rate as comparable between items with similar home exposure, not across the whole catalogue.</p>
+    </div>
+
+    <div class="caveat">
+      <span class="verdict">Read carefully</span>
+      <h3>Avg. position is not a setting you control</h3>
+      <p>It records where devotees happened to see the item, so it reflects how far people scrolled as much as where the item sat. It also blends both arms of the live feed-ordering experiment, which means a shift in this column can be a change in how the experiment splits traffic rather than anything about the content.</p>
+    </div>
+  </section>
+
+  <section class="example">
+    <h3>A worked example</h3>
+    <p>Real figures from the report, showing how the derived columns fall out.</p>
+    <div class="scroll-x">
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Views</th><th>Viewers</th><th>Intents</th><th>Shares</th><th>Share rate</th><th>Completion</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>hanuman-status-5</td><td>501</td><td>352</td><td>49</td><td>71</td><td>14.2%</td><td>53.1%</td></tr>
+          <tr><td>hanuman-status-2</td><td>568</td><td>381</td><td>70</td><td>66</td><td>11.6%</td><td>34.3%</td></tr>
+          <tr><td>ganesha-status-1</td><td>686</td><td>449</td><td>61</td><td>21</td><td>3.1%</td><td>13.1%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:18px; font-size:14.5px; color:var(--ink-soft); max-width:var(--measure);">
+      Ganesha-status-1 had the most views of the three and the fewest shares — the case the default
+      sort exists to surface. Hanuman-status-5 had fewer views but converted far better at both steps.
+    </p>
+  </section>
+
+  <footer>
+    All dates and day-counts are IST calendar days, and both ends of a date range are included.
+    The date filter applies to <strong>events only</strong> — it never hides items from the
+    catalogue, which is why Created and Days live stay put when you change it.
+  </footer>
+
+</div>
+</body>
+</html>
