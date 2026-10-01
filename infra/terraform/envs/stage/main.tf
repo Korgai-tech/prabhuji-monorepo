@@ -263,7 +263,7 @@ module "cicd" {
   region = var.region
   # This repo (a fork of monorepo-metaservice, now the main line). The live
   # app-stage-deploy project was repointed here by hand; this matches the code to it.
-  github_repo_url = "https://github.com/GamepeTechnolgies/prabhuji-monorepo.git"
+  github_repo_url = "https://github.com/Korgai-tech/prabhuji-monorepo.git"
   branch          = "stage"
   cluster_name    = module.stack.cluster_name
 
