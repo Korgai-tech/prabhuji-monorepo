@@ -2,9 +2,9 @@
 # push to the `stage` branch and force-new-deployments the services; task defs
 # never change. To pin stage temporarily (e.g. rollback), apply with
 # :<commit-sha> instead.
-api_image    = "661952267560.dkr.ecr.ap-south-1.amazonaws.com/app-stage-api-images:latest"
-events_image = "661952267560.dkr.ecr.ap-south-1.amazonaws.com/app-stage-events-images:latest"
-admin_image  = "661952267560.dkr.ecr.ap-south-1.amazonaws.com/app-stage-admin-images:latest"
+api_image    = "815756778705.dkr.ecr.ap-south-1.amazonaws.com/app-stage-api-images:latest"
+events_image = "815756778705.dkr.ecr.ap-south-1.amazonaws.com/app-stage-events-images:latest"
+admin_image  = "815756778705.dkr.ecr.ap-south-1.amazonaws.com/app-stage-admin-images:latest"
 
 # Break-glass SSM bastion (bastion.tf) — RDS 5432 + Redis 6379 port-forwarding.
 # Deliberately ON for stage and pinned HERE rather than passed per-apply: the
