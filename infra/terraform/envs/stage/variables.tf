@@ -157,9 +157,9 @@ variable "decentro_base_url" {
 }
 
 variable "feed_refresh_interval_ms" {
-  description = "How often the rotated discovery listings re-order on stage. Defaults to the production 2h schedule; set it in terraform.tfvars (e.g. 300000 for 5 minutes) to watch several refreshes in a sitting. env.ts bounds it to 60000..86400000."
+  description = "How often the rotated discovery listings re-order on stage. Defaults to the production 5h schedule; set it in terraform.tfvars (e.g. 300000 for 5 minutes) to watch several refreshes in a sitting. env.ts bounds it to 60000..86400000."
   type        = number
-  default     = 7200000 # 2h — same as prod unless tfvars says otherwise
+  default     = 18000000 # 5h — same as prod unless tfvars says otherwise
 }
 
 variable "decentro_timeout_ms" {

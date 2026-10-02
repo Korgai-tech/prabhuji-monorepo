@@ -17,7 +17,7 @@ import {
 function catalogue(size = 100, epoch = 40_000): RotationCandidate[] {
   // `epochStartMs` is the real inverse of `refreshEpochOf`. Deriving the
   // timestamp as `epoch * REFRESH_INTERVAL_MS` instead only round-trips while
-  // the IST offset is smaller than one interval — false at the shipped 2h
+  // the IST offset is smaller than one interval — false at the shipped 5h
   // (offset 5h30m) and at any shortened test interval.
   const oldEnough = epochStartMs(epoch) - 365 * 24 * 60 * 60 * 1000;
   return Array.from({ length: size }, (_, i) => ({
@@ -30,19 +30,20 @@ function catalogue(size = 100, epoch = 40_000): RotationCandidate[] {
 const EPOCH = 40_000;
 
 describe("refresh epoch", () => {
-  it("ticks over at midnight IST and every interval after", () => {
-    // 2026-08-04T00:00:00+05:30 === 2026-08-03T18:30:00Z. Midnight IST is a
-    // boundary for any interval that divides 24h, so this holds at the shipped
-    // 2h setting and at a shortened test interval alike.
-    const midnightIst = Date.parse("2026-08-03T18:30:00.000Z");
-    expect(refreshEpochOf(midnightIst - 1)).toBe(refreshEpochOf(midnightIst) - 1);
-    expect(refreshEpochOf(midnightIst)).toBe(refreshEpochOf(midnightIst + 1));
+  it("ticks over at each boundary and every interval after", () => {
+    // The shipped 5h interval does not divide 24h, so midnight IST is not
+    // generally a boundary. Take the boundary of whichever epoch contains a
+    // given instant instead — that holds at any interval.
+    const someInstant = Date.parse("2026-08-03T18:30:00.000Z");
+    const boundary = epochStartMs(refreshEpochOf(someInstant));
+    expect(boundary).toBeLessThanOrEqual(someInstant);
+    expect(someInstant - boundary).toBeLessThan(REFRESH_INTERVAL_MS);
+    expect(refreshEpochOf(boundary - 1)).toBe(refreshEpochOf(boundary) - 1);
+    expect(refreshEpochOf(boundary)).toBe(refreshEpochOf(boundary + 1));
     // one interval later is the next epoch
-    expect(refreshEpochOf(midnightIst + REFRESH_INTERVAL_MS)).toBe(
-      refreshEpochOf(midnightIst) + 1
-    );
-    expect(epochStartIso(refreshEpochOf(midnightIst))).toBe("2026-08-03T18:30:00.000Z");
-    expect(currentRefreshEpoch(new Date(midnightIst))).toBe(refreshEpochOf(midnightIst));
+    expect(refreshEpochOf(boundary + REFRESH_INTERVAL_MS)).toBe(refreshEpochOf(boundary) + 1);
+    expect(epochStartIso(refreshEpochOf(boundary))).toBe(new Date(boundary).toISOString());
+    expect(currentRefreshEpoch(new Date(boundary))).toBe(refreshEpochOf(boundary));
   });
 });
 

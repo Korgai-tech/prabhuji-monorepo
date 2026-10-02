@@ -419,9 +419,9 @@ variable "decentro_base_url" {
 }
 
 variable "feed_refresh_interval_ms" {
-  description = "How often the rotated discovery listings (home feed, status, ringtone, wallpaper) re-order. Non-secret. The default is the PRODUCTION schedule — 2h, i.e. every even hour IST — so prod should leave it alone; shorten it on stage only to watch several refreshes in a sitting. Bounded 60000..86400000 by env.ts, which fails the boot outside that range. Note the new-item boost window scales with it (24 cycles: ~2 days at 2h, 2 hours at 5 minutes), so a short value is a testing aid, not a tuning knob."
+  description = "How often the rotated discovery listings (home feed, status, ringtone, wallpaper) re-order. Non-secret. The default is the PRODUCTION schedule — 5h — so prod should leave it alone; shorten it on stage only to watch several refreshes in a sitting. Bounded 60000..86400000 by env.ts, which fails the boot outside that range. Note the new-item boost window scales with it (10 cycles: ~2 days at 5h, 50 minutes at 5 minutes), so a short value is a testing aid, not a tuning knob."
   type        = number
-  default     = 7200000 # 2h
+  default     = 18000000 # 5h
 
   validation {
     condition     = var.feed_refresh_interval_ms >= 60000 && var.feed_refresh_interval_ms <= 86400000

@@ -173,7 +173,7 @@ let service: WallpaperService;
  * Stand up a rotatable catalogue for the `default`/`top_live` surfaces: the
  * candidates the plan is built from, plus a hydration that returns whatever
  * slice the plan asks for. The rotated ORDER is deliberately not asserted (it
- * changes every 2h by design).
+ * changes every 5h by design).
  */
 function mockCatalogue(rows: ReturnType<typeof wallpaperRow>[]): void {
   repo.listRotationCandidates.mockResolvedValue(

@@ -138,7 +138,7 @@ let service: RingtoneService;
 /**
  * Stand up a rotatable catalogue: the candidates the plan is built from, plus a
  * hydration that returns whatever slice the plan asks for. The rotated ORDER is
- * deliberately not asserted (it changes every 2h by design).
+ * deliberately not asserted (it changes every 5h by design).
  */
 function mockCatalogue(rows: RingtoneRow[]): void {
   repo.listRotationCandidates.mockResolvedValue(

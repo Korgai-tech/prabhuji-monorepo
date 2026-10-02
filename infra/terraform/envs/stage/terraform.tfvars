@@ -167,16 +167,16 @@ auth_otp_provider = "stub"
 # ============================================================================
 # Discovery-feed rotation. STAGE RUNS AT 5 MINUTES PERMANENTLY, by decision —
 # a refresh you have to wait until midnight for is a refresh nobody tests. Prod
-# is 2h (every even hour IST) and gets there by NOT passing this at all, so the
+# is 5h and gets there by NOT passing this at all, so the
 # schedule that matters lives in one place: the module default.
 #
 # Two ways stage therefore does NOT behave like prod, both consequences of the
 # interval and neither a bug:
-#   - the new-item boost window is NEW_BOOST_CYCLES (24) refreshes, so a fresh
-#     upload holds a guaranteed top slot for 2 HOURS here versus ~2 days on
+#   - the new-item boost window is NEW_BOOST_CYCLES (10) refreshes, so a fresh
+#     upload holds a guaranteed top slot for 50 MINUTES here versus ~2 days on
 #     prod. "The new ringtone dropped off the top" is expected on stage.
 #   - bk_feed_refresh_triggered fires once per refresh — 288/day here against
-#     12/day on prod. Filter on environment before reading refresh counts out of
+#     ~5/day on prod. Filter on environment before reading refresh counts out of
 #     the staging warehouse.
 #
 # Applying this is a task-definition change, so it rolls the api service.

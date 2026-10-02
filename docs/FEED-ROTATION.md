@@ -2,13 +2,13 @@
 
 The home feed and the module grids used to order by `id ASC` forever — the per-item `sort_order`
 columns were deliberately dropped, and no new content is landing for a while. The app read stale.
-Rotation makes the order change every 2 hours using only the catalogue we already have.
+Rotation makes the order change every 5 hours using only the catalogue we already have.
 
 ## The one idea: a refresh epoch, not a scheduler
 
-    epoch = floor((now + 5:30) / 2h)       // ticks at every even hour IST (00:00, 02:00, … 22:00)
+    epoch = floor((now + 5:30) / 5h)       // ticks every 5h; 5 doesn't divide 24, so the IST clock times drift 1h later each day
 
-The 2h interval (12h until it was shortened to make the feed move faster) is the default, not a hardcoded constant: `FEED_REFRESH_INTERVAL_MS` overrides it
+The 5h interval (12h until it was shortened to make the feed move faster) is the default, not a hardcoded constant: `FEED_REFRESH_INTERVAL_MS` overrides it
 (bounded 1 minute .. 1 day, validated in `shared/config/env.ts`, and again in Terraform so a bad
 value fails the plan instead of crash-looping the task). **Prod leaves it unset** — the default IS
 the production schedule, and `envs/prod/main.tf` deliberately does not pass it — the schedule that matters lives in one place.
@@ -18,8 +18,8 @@ that shipped to prod once and had to be reverted.
 
 Two ways stage therefore does not behave like prod, both consequences of the interval rather than
 bugs: the new-item boost window is `NEW_BOOST_CYCLES` refreshes, so a fresh upload holds its
-guaranteed top slot for **2 hours on stage against ~2 days on prod**; and
-`bk_feed_refresh_triggered` fires **288 times a day on stage against 12 times on prod**, so filter on
+guaranteed top slot for **50 minutes on stage against ~2 days on prod**; and
+`bk_feed_refresh_triggered` fires **288 times a day on stage against ~5 times on prod**, so filter on
 environment before reading refresh counts out of the staging warehouse.
 
 The displayed order is a **pure function of `(epoch, catalogue)`**. Nothing schedules anything:
@@ -83,7 +83,7 @@ Each module rotates over its **own** catalogue — one module's shuffle never af
    so the module resurfaces nothing and they compete in the shuffle like everything else. Both
    rules exist because the top of a young catalogue's grid otherwise never moves, which reads as
    "the refresh is broken" even while the rest of the grid rotates correctly.
-5. **New boost** — items published within the last 24 refreshes (~2 days), newest first, capped at
+5. **New boost** — items published within the last 10 refreshes (~2 days), newest first, capped at
    2, pinned above those. Inert while the catalogue is frozen; live the day uploads resume, and it
    expires on its own — no permanent preference.
 
@@ -117,7 +117,7 @@ still reject a malformed cursor.
 **Content published mid-epoch is invisible until the next refresh** — the plan for the running
 epoch was already built and published. This is the same property that makes "the order does not
 change under you" true, and the new-boost window (above) guarantees the item lands near the top at
-the next even-hour IST refresh. If an ops workflow ever needs a fresh upload live immediately, that is a
+the next refresh. If an ops workflow ever needs a fresh upload live immediately, that is a
 deliberate feature to add (delete the `feed:plan:*` keys for the current epoch on publish), not a
 bug in rotation.
 
@@ -293,7 +293,7 @@ Real Postgres, 10,000 wallpapers, median of 5 runs:
 
 | Query | Median | Runs |
 |---|---|---|
-| Plan build — whole catalogue, 3 columns | 23.2 ms | once per refresh (12×/day), whole fleet |
+| Plan build — whole catalogue, 3 columns | 23.2 ms | once per refresh (~5×/day), whole fleet |
 | Page hydrate — `WHERE id IN (10)` | **0.9 ms** | per request |
 | *(before rotation)* keyset `ORDER BY id LIMIT 11` | 0.7 ms | per request |
 | *(rejected)* `ORDER BY md5(id‖seed) LIMIT 10` | 10.4 ms | per request |

@@ -4,7 +4,7 @@
  *
  * #PATH_DECISION — ROTATION STAYS SHARED, SLOTTING IS PER-USER.
  *
- * The 2h rotation is a pure function of `(epoch, catalogue)`, built once and
+ * The 5h rotation is a pure function of `(epoch, catalogue)`, built once and
  * published to the whole fleet (see `plan-cache.ts`). Personalising the feed
  * must not break that: a plan per user would be a cache entry per user, and a
  * catalogue read per user per refresh.

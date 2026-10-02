@@ -148,7 +148,7 @@ let service: StatusService;
 /**
  * Stand up a rotatable catalogue: the candidate list the plan is built from,
  * and a hydration that returns whatever slice the plan asks for. The rotated
- * ORDER is deliberately not asserted (it changes every 2h by design) — what
+ * ORDER is deliberately not asserted (it changes every 5h by design) — what
  * the feed tests pin down is that paging serves every item exactly once.
  */
 function mockCatalogue(ids: string[], overrides: Partial<StatusRow> = {}): void {

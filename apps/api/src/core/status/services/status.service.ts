@@ -79,7 +79,7 @@ export class StatusService {
   /**
    * `GET /status/feed` — one page of active status items in the ROTATED order
    * for the current refresh epoch (TAM-150): ~65% of the catalogue shown,
-   * reshuffled every 2h, with proven items periodically resurfaced. The epoch
+   * reshuffled every 5h, with proven items periodically resurfaced. The epoch
    * rides in the cursor so a refresh never reorders an open session.
    *
    * Optionally narrowed to a single deity slug (TAM-108 single-deity model) and
