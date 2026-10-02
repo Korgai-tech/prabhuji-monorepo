@@ -102,7 +102,7 @@ module "stack" {
   # session with `-var enable_bastion=true` and off again after.
   enable_bastion = var.enable_bastion
 
-  # Discovery-feed rotation. Defaults to prod's 12h schedule; terraform.tfvars is
+  # Discovery-feed rotation. Defaults to prod's 5h schedule; terraform.tfvars is
   # where QA shortens it (300000 = every 5 min) to watch several refreshes in a
   # sitting, instead of the old way — editing the constant and shipping a deploy,
   # which reached prod once and had to be reverted.

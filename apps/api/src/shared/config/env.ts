@@ -372,8 +372,7 @@ const EnvSchema = z
     CLICKHOUSE_TENANT: optionalSecret(z.string().min(1)),
     // ---- Discovery feed rotation ------------------------------------------
     // How often the rotated listings re-order (home feed, status, ringtone,
-    // wallpaper). The 12h default IS the production schedule — 00:00 and 12:00
-    // IST — and prod should leave this unset rather than restate it.
+    // wallpaper). The 5h default IS the production schedule — and prod should leave this unset rather than restate it.
     //
     // It exists so a tester can watch several refreshes in a sitting without a
     // code change and a deploy (the old way was editing the constant, which
@@ -399,7 +398,7 @@ const EnvSchema = z
         .int()
         .min(60_000) // 1 minute
         .max(24 * 60 * 60 * 1000) // 1 day
-        .default(12 * 60 * 60 * 1000)
+        .default(5 * 60 * 60 * 1000)
     ),
     // ---- Analytics: server-side events -> apps/events -> ClickHouse -------
     // The API is a PRODUCER for the same door the Flutter SDK posts to

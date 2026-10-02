@@ -103,7 +103,7 @@ export function PinnedContentPage() {
       <div>
         <h1 className="text-2xl font-semibold">Pinned content</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Editorial pins that sit above the twice-daily rotation on the home
+          Editorial pins that sit above the 5-hourly rotation on the home
           and status feeds. Pins are a pure overlay — creating one goes live on
           the very next feed request, and expiry drops the pin without any
           admin action.
