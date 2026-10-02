@@ -106,7 +106,7 @@ function CreatePin({ onClose }: { onClose: () => void }) {
       <DialogHeader>
         <DialogTitle>New pin</DialogTitle>
         <DialogDescription>
-          Pins live above the twice-daily rotation for a bounded window. All
+          Pins live above the 2-hourly rotation for a bounded window. All
           dates are IST — the wire body carries UTC.
         </DialogDescription>
       </DialogHeader>

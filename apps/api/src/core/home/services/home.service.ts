@@ -388,7 +388,7 @@ export class HomeService {
     const page = await rotationPage({
       // Per-user order ⇒ not cached here. The POOLS it composes are cached as
       // one bundle per epoch (`buildPlanBundle`), so the catalogue is still read
-      // twice a day for the whole fleet.
+      // once per refresh for the whole fleet.
       key: null,
       cursor,
       limit,

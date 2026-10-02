@@ -226,7 +226,7 @@ let service: HomeService;
 /**
  * Stand up a rotatable feed catalogue: the candidates the plan is built from,
  * plus a hydration that returns whatever slice the plan asks for. The rotated
- * ORDER is deliberately not asserted (it changes every 12h by design) — the
+ * ORDER is deliberately not asserted (it changes every 2h by design) — the
  * feed tests pin down that paging serves every card exactly once, and that the
  * mixed content types survive.
  */

@@ -199,7 +199,7 @@ export class WallpaperService {
 
   /**
    * One page of the ROTATED default order for the current refresh epoch: ~65%
-   * of the (filtered) catalogue shown, reshuffled every 12h, with the most-set
+   * of the (filtered) catalogue shown, reshuffled every 2h, with the most-set
    * wallpapers periodically resurfaced. Shared by the plain listing, the
    * `top_live` row's "see all", and the `top_live` shelf on Home — so a shelf
    * and its full listing always agree on the order.

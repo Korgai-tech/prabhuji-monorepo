@@ -7,6 +7,7 @@ import {
   orderByPlan,
   refreshEpochOf,
   rotate,
+  NEW_BOOST_CYCLES,
   NEW_BOOST_MAX,
   REFRESH_INTERVAL_MS,
   type RotationCandidate,
@@ -16,8 +17,8 @@ import {
 function catalogue(size = 100, epoch = 40_000): RotationCandidate[] {
   // `epochStartMs` is the real inverse of `refreshEpochOf`. Deriving the
   // timestamp as `epoch * REFRESH_INTERVAL_MS` instead only round-trips while
-  // the IST offset is smaller than one interval — true at 12h, false the moment
-  // the interval is shortened for a test run.
+  // the IST offset is smaller than one interval — false at the shipped 2h
+  // (offset 5h30m) and at any shortened test interval.
   const oldEnough = epochStartMs(epoch) - 365 * 24 * 60 * 60 * 1000;
   return Array.from({ length: size }, (_, i) => ({
     id: `item-${String(i).padStart(3, "0")}`,
@@ -29,10 +30,10 @@ function catalogue(size = 100, epoch = 40_000): RotationCandidate[] {
 const EPOCH = 40_000;
 
 describe("refresh epoch", () => {
-  it("ticks over at 00:00 and 12:00 IST", () => {
+  it("ticks over at midnight IST and every interval after", () => {
     // 2026-08-04T00:00:00+05:30 === 2026-08-03T18:30:00Z. Midnight IST is a
-    // boundary for any interval that divides 12h, so this holds at the shipped
-    // 12h setting and at a shortened test interval alike.
+    // boundary for any interval that divides 24h, so this holds at the shipped
+    // 2h setting and at a shortened test interval alike.
     const midnightIst = Date.parse("2026-08-03T18:30:00.000Z");
     expect(refreshEpochOf(midnightIst - 1)).toBe(refreshEpochOf(midnightIst) - 1);
     expect(refreshEpochOf(midnightIst)).toBe(refreshEpochOf(midnightIst + 1));
@@ -131,8 +132,8 @@ describe("rotate", () => {
     // the cap holds — the third new item does not also jump the queue
     expect(ordered.indexOf("fresh-c")).toBeGreaterThanOrEqual(NEW_BOOST_MAX);
 
-    // ...and 4 cycles later it competes like everything else
-    const later = rotate([...items, ...fresh], EPOCH + 4);
+    // ...and once its boost window has passed it competes like everything else
+    const later = rotate([...items, ...fresh], EPOCH + NEW_BOOST_CYCLES);
     expect(later.slice(0, NEW_BOOST_MAX)).not.toContain("fresh-a");
   });
 

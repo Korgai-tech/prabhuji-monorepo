@@ -4,12 +4,12 @@
  * The problem: every public listing in this API orders by `id ASC` forever (the
  * per-item `sort_order` columns were deliberately dropped), so with no new
  * uploads the app looks frozen. Freshness has to come from RE-ORDERING the
- * catalogue we already have, twice a day.
+ * catalogue we already have, every 2 hours.
  *
  * #PATH_DECISION — no scheduler. The order is a pure function of
  * `(refresh epoch, catalogue)`, so every ECS task computes the byte-identical
  * plan on its own with no cron job, no `feed_rotation` table, and no Redis
- * coordination. A "12:00 AM / 12:00 PM IST refresh" is just the epoch number
+ * coordination. A "02:00 / 04:00 / … IST refresh" is just the epoch number
  * ticking over; the first request after the boundary builds the new plan.
  *
  * Nothing here touches the clock or the database — `rotate` and
@@ -21,17 +21,21 @@
 // Schedule
 // ---------------------------------------------------------------------------
 
-/** Two refreshes a day — 00:00 and 12:00 IST. The PRODUCTION schedule. */
-const DEFAULT_REFRESH_INTERVAL_MS = 12 * 60 * 60 * 1000;
+/**
+ * Twelve refreshes a day — every even hour IST (00:00, 02:00, … 22:00). The
+ * PRODUCTION schedule. Was 12h (00:00 and 12:00 IST) until the feed was asked
+ * to move faster.
+ */
+const DEFAULT_REFRESH_INTERVAL_MS = 2 * 60 * 60 * 1000;
 
 /**
  * How often the rotated listings re-order, `FEED_REFRESH_INTERVAL_MS` or the
- * 12h default.
+ * 2h default.
  *
  * Everything time-shaped derives from this one value: the epoch boundary, the
  * plan-cache TTL (`REFRESH_INTERVAL_MS * 2`), and the new-item boost window
  * (`NEW_BOOST_CYCLES` refreshes). A short interval shrinks the boost window
- * proportionally (4 cycles is ~2 days at 12h, 20 minutes at 5 minutes), which
+ * proportionally (24 cycles is ~2 days at 2h, 2 hours at 5 minutes), which
  * is why this is a TESTING AID and not a tuning knob — prod leaves it unset.
  *
  * Read from `process.env` rather than `loadEnv()` on purpose. This module is
@@ -70,7 +74,7 @@ export function currentRefreshEpoch(now: Date = new Date()): number {
   return refreshEpochOf(now.getTime());
 }
 
-/** UTC instant at which `epoch` began (i.e. the 00:00 or 12:00 IST boundary). */
+/** UTC instant at which `epoch` began (i.e. an even-hour IST boundary). */
 export function epochStartMs(epoch: number): number {
   return epoch * REFRESH_INTERVAL_MS - IST_OFFSET_MS;
 }
@@ -104,8 +108,12 @@ export const RESURFACE_POOL = 20;
 /** How many of that pool get pinned near the top per refresh. */
 export const RESURFACE_COUNT = 2;
 
-/** Refresh cycles a newly published item is guaranteed a top slot (~2 days). */
-export const NEW_BOOST_CYCLES = 4;
+/**
+ * Refresh cycles a newly published item is guaranteed a top slot (~2 days at
+ * the 2h schedule). Counted in cycles, so it was 4 at 12h — keep it in step
+ * with `DEFAULT_REFRESH_INTERVAL_MS` or the boost silently shrinks.
+ */
+export const NEW_BOOST_CYCLES = 24;
 
 /** Cap on boosted new items per refresh, per content type. */
 export const NEW_BOOST_MAX = 2;

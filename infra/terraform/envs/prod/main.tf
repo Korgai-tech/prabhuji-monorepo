@@ -114,7 +114,7 @@ module "stack" {
   enable_bastion = var.enable_bastion
 
   # feed_refresh_interval_ms is DELIBERATELY NOT PASSED. The module default IS
-  # the production schedule (12h — 00:00 and 12:00 IST); the variable exists so
+  # the production schedule (2h — every even hour IST); the variable exists so
   # stage can shorten it for a QA session. Restating it here would only create a
   # second place for the real schedule to drift from, and shortening it on prod
   # would also shorten the window a fresh upload is guaranteed a top slot.

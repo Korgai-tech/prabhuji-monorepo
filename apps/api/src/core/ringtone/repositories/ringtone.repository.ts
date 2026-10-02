@@ -130,7 +130,7 @@ function languageMembership(locale: string): Prisma.RingtoneWhereInput {
 export class RingtoneRepository {
   /**
    * The active ringtone catalogue (under the grid's deity/language filters) as
-   * ROTATION candidates — the input for the twice-daily re-order (TAM-150). No
+   * ROTATION candidates — the input for the 2-hourly re-order (TAM-150). No
    * `take`: rotation slides a window over the whole ring.
    *
    * `playCount + setCount` IS the action-click signal the spec resurfaces on
@@ -138,7 +138,7 @@ export class RingtoneRepository {
    * is needed here. Read once per refresh epoch per filter combination.
    *
    * ponytail: whole-catalogue read, and neither counter is indexed — fine
-   * because we sort in memory, twice a day. Push the hash into SQL
+   * because we sort in memory, once per refresh. Push the hash into SQL
    * (`ORDER BY md5(id || :seed)`) if the catalogue ever gets big.
    */
   async listRotationCandidates(params: {

@@ -486,11 +486,11 @@ test("PAYMENT_ENV=production refuses a Razorpay TEST key", () => {
   expect(() => loadEnv()).toThrow(/test key/);
 });
 
-test("FEED_REFRESH_INTERVAL_MS defaults to the 12h production schedule", () => {
+test("FEED_REFRESH_INTERVAL_MS defaults to the 2h production schedule", () => {
   process.env.DATABASE_URL = "postgres://u:p@localhost:5432/db";
   process.env.JWT_SECRET = "a-sufficiently-long-secret";
   delete process.env.FEED_REFRESH_INTERVAL_MS;
-  expect(loadEnv().FEED_REFRESH_INTERVAL_MS).toBe(12 * 60 * 60 * 1000);
+  expect(loadEnv().FEED_REFRESH_INTERVAL_MS).toBe(2 * 60 * 60 * 1000);
 });
 
 test("FEED_REFRESH_INTERVAL_MS treats an empty value as unset, not as 0", () => {
@@ -500,7 +500,7 @@ test("FEED_REFRESH_INTERVAL_MS treats an empty value as unset, not as 0", () => 
   process.env.DATABASE_URL = "postgres://u:p@localhost:5432/db";
   process.env.JWT_SECRET = "a-sufficiently-long-secret";
   process.env.FEED_REFRESH_INTERVAL_MS = "";
-  expect(loadEnv().FEED_REFRESH_INTERVAL_MS).toBe(12 * 60 * 60 * 1000);
+  expect(loadEnv().FEED_REFRESH_INTERVAL_MS).toBe(2 * 60 * 60 * 1000);
 });
 
 test("FEED_REFRESH_INTERVAL_MS accepts a short testing interval", () => {

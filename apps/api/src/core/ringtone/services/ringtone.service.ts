@@ -70,7 +70,7 @@ export class RingtoneService {
    * `GET /ringtones` — one page of the home grid (optional deity filter +
    * optional `locale` language-membership filter, TAM-108) in the ROTATED order
    * for the current refresh epoch (TAM-150): ~65% of the catalogue shown,
-   * reshuffled every 12h, with the most played/set ringtones periodically
+   * reshuffled every 2h, with the most played/set ringtones periodically
    * resurfaced. The epoch rides in the cursor, so a refresh never reorders a
    * grid the user is already scrolling.
    */
